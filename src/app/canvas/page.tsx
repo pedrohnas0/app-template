@@ -13,7 +13,29 @@ import Image from "next/image";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 
-const users = [
+type Position = {
+  x: number;
+  y: number;
+};
+
+type User = {
+  id: number;
+  name: string;
+  avatar: string;
+  isCurrentUser?: boolean;
+  message?: string;
+};
+
+type UserWithPosition = User & {
+  position: Position;
+};
+
+type Color = {
+  foreground: string;
+  background: string;
+};
+
+const users: User[] = [
   {
     id: 0,
     name: "Pedro Nascimento",
@@ -38,7 +60,7 @@ const users = [
   },
 ];
 
-const colors = [
+const colors: Color[] = [
   {
     foreground: "text-blue-800",
     background: "bg-blue-50",
@@ -55,25 +77,30 @@ const colors = [
     foreground: "text-sky-800",
     background: "bg-sky-50",
   },
-];
+] as const;
 
 // Helper function to generate random position
-const getRandomPosition = () => ({
+const getRandomPosition = (): Position => ({
   x: Math.floor(Math.random() * 80) + 10, // Keep within 10-90% range
   y: Math.floor(Math.random() * 80) + 10, // Keep within 10-90% range
 });
 
+// Helper function to get color safely
+const getColor = (index: number): Color => {
+  return colors[index % colors.length]!;
+};
+
 export default function CollaborativeCanvasPage() {
-  const [myPosition, setMyPosition] = useState({ x: 50, y: 50 });
-  const [user1Position, setUser1Position] = useState({
+  const [myPosition, setMyPosition] = useState<Position>({ x: 50, y: 50 });
+  const [user1Position, setUser1Position] = useState<Position>({
     x: 10,
     y: 8,
   });
-  const [user2Position, setUser2Position] = useState({
+  const [user2Position, setUser2Position] = useState<Position>({
     x: 30,
     y: 40,
   });
-  const [user3Position, setUser3Position] = useState({
+  const [user3Position, setUser3Position] = useState<Position>({
     x: 70,
     y: 50,
   });
@@ -166,9 +193,9 @@ export default function CollaborativeCanvasPage() {
   }, []);
 
   // Assign positions to users
-  const usersWithPositions = users.map((user, index) => ({
+  const usersWithPositions: UserWithPosition[] = users.map((user, index) => ({
     ...user,
-    position: userPositions[index],
+    position: userPositions[index]!,
   }));
 
   return (
@@ -210,12 +237,12 @@ export default function CollaborativeCanvasPage() {
           }}
         >
           <CursorPointer
-            className={cn(colors[index % colors.length].foreground)}
+            className={cn(getColor(index).foreground)}
           />
           <CursorBody
             className={cn(
-              colors[index % colors.length].background,
-              colors[index % colors.length].foreground,
+              getColor(index).background,
+              getColor(index).foreground,
               "gap-1 px-3 py-2"
             )}
           >
