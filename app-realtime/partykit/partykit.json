@@ -1,0 +1,5 @@
+{
+  "name": "app-template-realtime",
+  "main": "src/canvas.ts",
+  "compatibilityDate": "2024-10-01"
+}
