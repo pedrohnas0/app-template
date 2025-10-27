@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CanvasRoot } from "~/components/kibo-ui/canvas-root";
 import type { Shape } from "~/hooks/use-yjs-shapes";
 
