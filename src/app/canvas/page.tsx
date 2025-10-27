@@ -222,12 +222,7 @@ export default function CollaborativeCanvasPage() {
         fitView
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={16}
-          size={1}
-          color="rgba(68, 64, 60, 0.6)"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
       </ReactFlow>
 
