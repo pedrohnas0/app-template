@@ -8,6 +8,7 @@ import {
   CursorName,
   CursorPointer,
 } from "~/components/kibo-ui/cursor";
+import { CanvasControls } from "~/components/kibo-ui/canvas-controls";
 import { cn } from "~/lib/utils";
 import Image from "next/image";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -15,8 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   ReactFlow,
   Background,
-  Controls,
   BackgroundVariant,
+  Panel,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -229,7 +230,9 @@ export default function CollaborativeCanvasPage() {
           size={1}
           className="opacity-30"
         />
-        <Controls className="rounded-md border border-border bg-background/80 backdrop-blur-sm shadow-sm" />
+        <Panel position="bottom-left" className="pointer-events-auto cursor-auto">
+          <CanvasControls />
+        </Panel>
       </ReactFlow>
 
       {/* Header */}
