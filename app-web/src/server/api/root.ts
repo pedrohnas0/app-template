@@ -1,4 +1,6 @@
+import { canvasRouter } from "~/server/api/routers/canvas";
 import { postRouter } from "~/server/api/routers/post";
+import { shapeRouter } from "~/server/api/routers/shape";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -8,6 +10,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
 	post: postRouter,
+	canvas: canvasRouter,
+	shape: shapeRouter,
 });
 
 // export type definition of API

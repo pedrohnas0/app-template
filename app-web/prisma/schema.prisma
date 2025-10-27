@@ -19,3 +19,59 @@ model Post {
 
     @@index([name])
 }
+
+// Canvas colaborativo
+model Canvas {
+    id          String   @id @default(cuid())
+    name        String
+    description String?
+    thumbnail   String? // URL da thumbnail
+
+    // Metadados
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    createdBy String? // User ID (futuro)
+
+    // Relacionamentos
+    shapes Shape[]
+
+    @@index([createdAt])
+    @@index([createdBy])
+}
+
+// Formas no Canvas
+model Shape {
+    id       String @id @default(cuid())
+    canvasId String
+
+    // Tipo e dados da forma
+    type String // "rect", "circle", "text", "line"
+    data Json // Dados específicos da forma
+
+    // Posição e estilo
+    x        Float
+    y        Float
+    width    Float?
+    height   Float?
+    rotation Float @default(0)
+
+    // Estilo
+    fill    String? // Cor de preenchimento
+    stroke  String? // Cor da borda
+    opacity Float   @default(1)
+
+    // Ordem (z-index)
+    zIndex Int @default(0)
+
+    // Metadados
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    createdBy String? // User ID
+
+    // Relacionamentos
+    canvas Canvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+    @@index([canvasId])
+    @@index([type])
+    @@index([zIndex])
+}

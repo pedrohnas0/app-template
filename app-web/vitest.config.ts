@@ -15,6 +15,8 @@ export default defineConfig({
 			"tests/integration/**/*.test.{ts,tsx}",
 		],
 		exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/.next/**"],
+		// Run API tests sequentially to avoid DB race conditions
+		fileParallelism: false,
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "json", "html", "lcov"],
