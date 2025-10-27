@@ -71,20 +71,20 @@ const users: User[] = [
 
 const colors: Color[] = [
   {
-    foreground: "text-blue-800",
-    background: "bg-blue-50",
+    foreground: "text-blue-600",
+    background: "bg-blue-100 dark:bg-blue-950",
   },
   {
-    foreground: "text-emerald-800",
-    background: "bg-emerald-50",
+    foreground: "text-emerald-600",
+    background: "bg-emerald-100 dark:bg-emerald-950",
   },
   {
-    foreground: "text-rose-800",
-    background: "bg-rose-50",
+    foreground: "text-rose-600",
+    background: "bg-rose-100 dark:bg-rose-950",
   },
   {
-    foreground: "text-sky-800",
-    background: "bg-sky-50",
+    foreground: "text-violet-600",
+    background: "bg-violet-100 dark:bg-violet-950",
   },
 ] as const;
 
@@ -213,7 +213,7 @@ export default function CollaborativeCanvasPage() {
   return (
     <main
       ref={containerRef}
-      className="relative h-screen w-screen overflow-hidden cursor-none select-none"
+      className="relative h-screen w-screen overflow-hidden cursor-none select-none bg-gradient-to-br from-background via-background to-muted/20"
     >
       {/* React Flow Canvas */}
       <ReactFlow
@@ -221,29 +221,39 @@ export default function CollaborativeCanvasPage() {
         edges={edges}
         fitView
         proOptions={{ hideAttribution: true }}
+        className="[&_.react-flow__background]:opacity-30"
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Controls />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={16}
+          size={1}
+          className="opacity-30"
+        />
+        <Controls className="rounded-md border border-border bg-background/80 backdrop-blur-sm shadow-sm" />
       </ReactFlow>
 
       {/* Header */}
       <div className="absolute top-8 left-8 z-10 pointer-events-auto cursor-auto">
-        <h1 className="text-3xl font-bold">Collaborative Canvas</h1>
-        <p className="text-muted-foreground">
-          Watch the cursors move around in real-time!
-        </p>
+        <div className="rounded-lg border border-border bg-background/80 backdrop-blur-sm shadow-lg p-6">
+          <h1 className="text-3xl font-bold tracking-tight">Collaborative Canvas</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Watch the cursors move around in real-time!
+          </p>
+        </div>
       </div>
 
       {/* Avatar Stack */}
-      <div className="absolute top-8 right-8 z-10 pointer-events-none">
-        <AvatarStack animate size={32}>
-          {usersWithPositions.map((user) => (
-            <Avatar key={user.id}>
-              <AvatarImage className="mt-0 mb-0" src={user.avatar} />
-              <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-            </Avatar>
-          ))}
-        </AvatarStack>
+      <div className="absolute top-8 right-8 z-10 pointer-events-auto">
+        <div className="rounded-lg border border-border bg-background/80 backdrop-blur-sm shadow-lg p-4">
+          <AvatarStack animate size={32}>
+            {usersWithPositions.map((user) => (
+              <Avatar key={user.id}>
+                <AvatarImage className="mt-0 mb-0" src={user.avatar} />
+                <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+              </Avatar>
+            ))}
+          </AvatarStack>
+        </div>
       </div>
 
       {/* Cursors */}
@@ -266,7 +276,7 @@ export default function CollaborativeCanvasPage() {
             className={cn(
               getColor(index).background,
               getColor(index).foreground,
-              "gap-1 px-3 py-2"
+              "gap-1 px-3 py-2 shadow-md border border-border/50"
             )}
           >
             <div className="flex items-center gap-2 opacity-100!">
