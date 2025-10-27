@@ -35,9 +35,21 @@ jobs:
 
       - name: Run unit tests
         run: npm run test:unit --workspace=app-web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_PARTYKIT_HOST: ${{ secrets.NEXT_PUBLIC_PARTYKIT_HOST }}
 
       - name: Run integration tests
         run: npm run test:integration --workspace=app-web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_PARTYKIT_HOST: ${{ secrets.NEXT_PUBLIC_PARTYKIT_HOST }}
         continue-on-error: true
 
       - name: Generate coverage report
