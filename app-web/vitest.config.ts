@@ -1,14 +1,15 @@
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  esbuild: {
+    jsxInject: `import React from 'react'`,
+  },
   test: {
     name: 'app-web',
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./tests/helpers/setup.ts'],
+    setupFiles: ['./tests/helpers/setup.tsx'],
     include: [
       'tests/unit/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',
