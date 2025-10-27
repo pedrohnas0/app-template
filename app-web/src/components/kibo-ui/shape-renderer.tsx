@@ -1,3 +1,4 @@
+import { cn } from "~/lib/utils";
 import type { Shape } from "~/hooks/use-yjs-shapes";
 
 /**
@@ -17,7 +18,7 @@ export type ShapeRendererProps = {
 /**
  * Componente que renderiza uma shape no canvas SVG
  *
- * Suporta renderização de:
+ * Suporta renderização de shapes com transições suaves e estilos shadcn/ui:
  * - Retângulos (rect)
  * - Círculos (circle)
  * - Texto (text)
@@ -39,6 +40,12 @@ export type ShapeRendererProps = {
  *   isSelected={true}
  * />
  * ```
+ *
+ * @remarks
+ * - Usa variáveis CSS do shadcn/ui para cores (--primary)
+ * - Transições suaves em hover e seleção
+ * - Drop shadow quando selecionado
+ * - Cursor pointer quando clicável
  */
 export function ShapeRenderer({
 	shape,
@@ -50,16 +57,21 @@ export function ShapeRenderer({
 		onClick?.(shape.id);
 	};
 
+	// Classes comuns para transições
+	const transitionClasses = "transition-all duration-200";
+
 	// Estilos comuns
 	const commonProps = {
 		"data-shape-id": shape.id,
 		onClick: handleClick,
-		style: {
-			cursor: onClick ? "pointer" : undefined,
-		},
-		// Estilo de seleção
+		className: cn(
+			transitionClasses,
+			onClick && "cursor-pointer hover:opacity-90",
+			isSelected && "drop-shadow-lg",
+		),
+		// Estilo de seleção - usa variável CSS do shadcn
 		...(isSelected && {
-			stroke: "#2563eb",
+			stroke: "hsl(var(--primary))",
 			strokeWidth: 2,
 		}),
 	};

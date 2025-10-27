@@ -357,7 +357,7 @@ describe("ShapeRenderer", () => {
 			);
 
 			const circle = container.querySelector("circle");
-			expect(circle).toHaveStyle({ cursor: "pointer" });
+			expect(circle).toHaveClass("cursor-pointer");
 		});
 
 		it("should apply selected style when isSelected is true", () => {
@@ -376,7 +376,7 @@ describe("ShapeRenderer", () => {
 			);
 
 			const rect = container.querySelector("rect");
-			expect(rect).toHaveAttribute("stroke", "#2563eb");
+			expect(rect).toHaveAttribute("stroke", "hsl(var(--primary))");
 			expect(rect).toHaveAttribute("stroke-width", "2");
 		});
 	});

@@ -45,19 +45,27 @@ describe("CanvasRoot", () => {
 	});
 
 	describe("rendering", () => {
-		it("should render an SVG canvas", () => {
+		it("should render a container with gradient background", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
-			const svg = container.querySelector("svg");
+			const mainContainer = container.firstChild as HTMLElement;
+			expect(mainContainer).toHaveClass("bg-gradient-to-br");
+			expect(mainContainer).toHaveClass("from-background");
+		});
+
+		it("should render an SVG canvas for shapes", () => {
+			const { container } = render(<CanvasRoot room="test-room" />);
+
+			const svg = container.querySelector('svg[role="img"]');
 			expect(svg).toBeInTheDocument();
 		});
 
-		it("should render with default dimensions", () => {
+		it("should render with default fullscreen dimensions", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
-			const svg = container.querySelector("svg");
-			expect(svg).toHaveAttribute("width", "800");
-			expect(svg).toHaveAttribute("height", "600");
+			const mainContainer = container.firstChild as HTMLElement;
+			expect(mainContainer).toHaveClass("h-screen");
+			expect(mainContainer).toHaveClass("w-screen");
 		});
 
 		it("should render with custom dimensions", () => {
@@ -65,17 +73,29 @@ describe("CanvasRoot", () => {
 				<CanvasRoot room="test-room" width={1000} height={800} />,
 			);
 
-			const svg = container.querySelector("svg");
-			expect(svg).toHaveAttribute("width", "1000");
-			expect(svg).toHaveAttribute("height", "800");
+			const mainContainer = container.firstChild as HTMLElement;
+			expect(mainContainer).toHaveStyle({ width: "1000px", height: "800px" });
 		});
 
-		it("should have white background by default", () => {
+		it("should render background pattern with dots by default", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
-			const svg = container.querySelector("svg");
-			const rect = svg?.querySelector("rect");
-			expect(rect).toHaveAttribute("fill", "white");
+			// Procurar o SVG do background (sem role)
+			const svgs = container.querySelectorAll("svg");
+			expect(svgs.length).toBeGreaterThan(1); // Background + Canvas SVG
+
+			// Verificar se existe pattern
+			const pattern = container.querySelector("pattern#dots-pattern");
+			expect(pattern).toBeInTheDocument();
+		});
+
+		it("should hide background when showBackground is false", () => {
+			const { container } = render(
+				<CanvasRoot room="test-room" showBackground={false} />,
+			);
+
+			const pattern = container.querySelector("pattern#dots-pattern");
+			expect(pattern).not.toBeInTheDocument();
 		});
 	});
 
@@ -166,7 +186,7 @@ describe("CanvasRoot", () => {
 			// Aguardar re-render e verificar estilo de seleção
 			await waitFor(() => {
 				const updatedRect = container.querySelector('rect[data-shape-id="shape-1"]');
-				expect(updatedRect).toHaveAttribute("stroke", "#2563eb");
+				expect(updatedRect).toHaveAttribute("stroke", "hsl(var(--primary))");
 			});
 		});
 
@@ -186,18 +206,19 @@ describe("CanvasRoot", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
 			const rect = container.querySelector('rect[data-shape-id="shape-1"]');
-			const background = container.querySelector('rect[fill="white"]');
+			// Background agora é transparente, vamos clicar no SVG principal
+			const svg = container.querySelector('svg[role="img"]');
 
 			// Selecionar shape
 			fireEvent.click(rect!);
 
 			await waitFor(() => {
 				const updatedRect = container.querySelector('rect[data-shape-id="shape-1"]');
-				expect(updatedRect).toHaveAttribute("stroke", "#2563eb");
+				expect(updatedRect).toHaveAttribute("stroke", "hsl(var(--primary))");
 			});
 
 			// Click no background
-			fireEvent.click(background!);
+			fireEvent.click(svg!);
 
 			// Shape não deve mais estar selecionada
 			await waitFor(() => {
@@ -211,14 +232,14 @@ describe("CanvasRoot", () => {
 		it("should have canvas role", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
-			const svg = container.querySelector("svg");
+			const svg = container.querySelector('svg[role="img"]');
 			expect(svg).toHaveAttribute("role", "img");
 		});
 
 		it("should have aria-label", () => {
 			const { container } = render(<CanvasRoot room="test-room" />);
 
-			const svg = container.querySelector("svg");
+			const svg = container.querySelector('svg[role="img"]');
 			expect(svg).toHaveAttribute("aria-label");
 		});
 	});

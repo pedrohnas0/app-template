@@ -1196,14 +1196,56 @@ export function useYjsShapes(room: string) {
 **Seguir mesma lógica TDD:**
 - Teste → Implementação → Refactor
 
+**⚠️ IMPORTANTE - Design System:**
+
+**REFERÊNCIA VISUAL:** `/app/canvas/page.tsx` (demo React Flow)
+
+Todos os componentes **DEVEM** seguir o padrão visual estabelecido na demo:
+
+**Padrões Obrigatórios:**
+```tsx
+// 1. Container principal
+className="relative h-screen w-screen cursor-none select-none overflow-hidden
+           bg-gradient-to-br from-background via-background to-muted/20"
+
+// 2. Painéis/Cards com Glass morphism
+className="rounded-lg border border-border bg-background/80 p-6
+           shadow-lg backdrop-blur-sm"
+
+// 3. Controles (toolbar)
+className="flex flex-col gap-2 rounded-lg border border-border
+           bg-background/80 p-2 shadow-lg backdrop-blur-sm"
+
+// 4. Usar componentes shadcn/ui
+- Button (variants: ghost, default)
+- Avatar, AvatarFallback, AvatarImage
+- Ícones do lucide-react
+
+// 5. Cursores colaborativos
+- Usar componentes em ~/components/kibo-ui/cursor.tsx
+- Cores definidas por usuário (blue, emerald, rose, violet)
+- Transições suaves: transition-all duration-1000
+
+// 6. Background pattern
+- Dots ou Grid do @xyflow/react
+- Opacity reduzida: opacity-30
+```
+
+**Componentes Reutilizáveis Existentes:**
+- ✅ `<Cursor>`, `<CursorPointer>`, `<CursorBody>`, `<CursorName>`, `<CursorMessage>`
+- ✅ `<CanvasControls>` (zoom in/out/fit)
+- ✅ `<AvatarStack>` (lista de usuários online)
+
 **Componentes a criar:**
-1. `<CanvasRoot>` - Container principal
-2. `<CollaborativeCursors>` - Cursores de outros usuários
-3. `<ShapeRenderer>` - Renderiza formas
-4. `<CanvasToolbar>` - Ferramentas (rect, circle, etc)
+1. `<CanvasRoot>` - Container principal (REFATORAR para seguir padrão)
+2. `<CollaborativeCursors>` - Usar componentes Cursor existentes
+3. `<ShapeRenderer>` - Renderiza formas (REFATORAR para SVG com estilos)
+4. `<CanvasToolbar>` - Seguir padrão CanvasControls
 
 **Entregável:**
 - ✅ Canvas colaborativo funcional
+- ✅ Design consistente com shadcn/ui
+- ✅ Glass morphism, backdrop blur, gradientes
 - ✅ Adicionar/mover/deletar formas
 - ✅ Cursores em tempo real
 - ✅ Todos componentes testados
