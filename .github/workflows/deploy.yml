@@ -1,0 +1,76 @@
+name: Deploy
+
+# Este workflow faz deploy automático quando há push para main
+# IMPORTANTE: Descomente os jobs quando estiver pronto para produção
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Permite trigger manual
+
+jobs:
+  # Deploy do PartyKit (Cloudflare)
+  # DESCOMENTAR quando quiser deploy automático do PartyKit
+  deploy-realtime:
+    name: Deploy PartyKit to Cloudflare
+    runs-on: ubuntu-latest
+    # Só roda se os testes passarem
+    # needs: [ci] # Descomentar quando integrar com CI
+
+    # COMENTADO POR ENQUANTO - descomentar quando quiser auto-deploy
+    if: false
+
+    defaults:
+      run:
+        working-directory: ./app-realtime/partykit
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app-realtime/partykit/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to PartyKit
+        run: npx partykit deploy --with-vars
+        env:
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+
+  # Vercel deploy
+  # Vercel já faz auto-deploy quando conectado ao GitHub
+  # Este job é só para documentação e possíveis hooks futuros
+  verify-vercel-deploy:
+    name: Verify Vercel deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for Vercel
+        run: |
+          echo "ℹ️ Vercel auto-deploys when pushing to main"
+          echo "📦 Check deployment at: https://vercel.com/pedrohnas0/dashboard"
+          echo ""
+          echo "To configure:"
+          echo "1. Connect your GitHub repo to Vercel"
+          echo "2. Set environment variables in Vercel dashboard"
+          echo "3. Vercel will auto-deploy on every push to main"
+
+  # Placeholder para deploy notifications (Slack, Discord, etc)
+  notify-deploy:
+    name: Notify deployment
+    runs-on: ubuntu-latest
+    needs: [verify-vercel-deploy]
+    if: false # Descomentar quando configurar notificações
+
+    steps:
+      - name: Send notification
+        run: |
+          echo "🚀 Deploy completed!"
+          # Adicionar integração com Slack/Discord aqui
+          # curl -X POST ${{ secrets.SLACK_WEBHOOK }} -d '{"text":"Deploy completed!"}'

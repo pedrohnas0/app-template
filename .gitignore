@@ -5,10 +5,17 @@ node_modules/
 
 # Testing
 coverage/
+.vitest/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Production
 build/
 dist/
+.next/
+.vercel/
+.partykit/
 
 # Misc
 .DS_Store
