@@ -1,5 +1,5 @@
-import { setupServer } from 'msw/node'
-import { handlers } from './handlers'
+import { setupServer } from "msw/node";
+import { handlers } from "./handlers";
 
 /**
  * MSW Server - Mock Service Worker server para testes
@@ -7,4 +7,4 @@ import { handlers } from './handlers'
  * Este servidor intercepta requisições HTTP em testes de integração
  * e retorna responses mockadas baseadas nos handlers definidos
  */
-export const server = setupServer(...handlers)
+export const server = setupServer(...handlers);

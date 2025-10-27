@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse } from "msw";
 
 /**
  * MSW Handlers - Mock API requests
@@ -20,11 +20,11 @@ import { http, HttpResponse } from 'msw'
  * ```
  */
 export const handlers = [
-  // Exemplo: Mock health check
-  http.get('/api/health', () => {
-    return HttpResponse.json({ status: 'ok' })
-  }),
+	// Exemplo: Mock health check
+	http.get("/api/health", () => {
+		return HttpResponse.json({ status: "ok" });
+	}),
 
-  // Adicione mais handlers conforme necessário
-  // Mock tRPC calls aqui quando criar os routers
-]
+	// Adicione mais handlers conforme necessário
+	// Mock tRPC calls aqui quando criar os routers
+];
