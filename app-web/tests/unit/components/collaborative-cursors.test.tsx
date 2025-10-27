@@ -178,7 +178,8 @@ describe("CollaborativeCursors", () => {
 
 			const cursor = container.querySelector('[data-testid="cursor-user-1"]');
 			expect(cursor).toHaveClass("transition-all");
-			expect(cursor).toHaveClass("duration-1000");
+			expect(cursor).toHaveClass("duration-150");
+		expect(cursor).toHaveClass("ease-out");
 		});
 
 		it("should default to smooth transition when isCurrentUser not specified", () => {
@@ -196,7 +197,8 @@ describe("CollaborativeCursors", () => {
 
 			const cursor = container.querySelector('[data-testid="cursor-user-1"]');
 			expect(cursor).toHaveClass("transition-all");
-			expect(cursor).toHaveClass("duration-1000");
+			expect(cursor).toHaveClass("duration-150");
+		expect(cursor).toHaveClass("ease-out");
 		});
 	});
 
