@@ -129,7 +129,7 @@ export function CollaborativeCursors({
 						data-testid={`cursor-${user.id}`}
 						className={cn(
 							"pointer-events-none absolute",
-							isCurrentUser ? "transition-none" : "transition-all duration-1000",
+							isCurrentUser ? "transition-none" : "transition-all duration-150 ease-out",
 						)}
 						style={{
 							top: `${user.y}%`,
