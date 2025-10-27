@@ -26,11 +26,12 @@ export default defineConfig({
 				"src/app/**", // Exclude Next.js app router files
 				"src/env.js",
 			],
-			all: true,
-			lines: 80,
-			functions: 80,
-			branches: 80,
-			statements: 80,
+			thresholds: {
+				lines: 80,
+				functions: 80,
+				branches: 80,
+				statements: 80,
+			},
 		},
 	},
 	resolve: {

@@ -37,7 +37,7 @@ export default defineConfig({
 	reporter: [
 		["html", { outputFolder: "playwright-report" }],
 		["list"],
-		...(process.env.CI ? [["github" as const]] : []),
+		...(process.env.CI ? ([["github"]] as const) : []),
 	],
 
 	// Configurações compartilhadas

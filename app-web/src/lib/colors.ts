@@ -41,5 +41,6 @@ export function getUserColor(userId: string): string {
 	// Usa valor absoluto e faz módulo pelo tamanho da paleta
 	const index = Math.abs(hash) % CURSOR_COLORS.length;
 
-	return CURSOR_COLORS[index];
+	// Sempre retorna uma cor válida (índice sempre está no range)
+	return CURSOR_COLORS[index] ?? CURSOR_COLORS[0];
 }
