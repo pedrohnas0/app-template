@@ -10,6 +10,7 @@ export default defineConfig({
 		globals: true,
 		environment: "jsdom",
 		setupFiles: ["./tests/helpers/setup.tsx"],
+		testTimeout: 30000, // 30s timeout for database operations
 		include: [
 			"tests/unit/**/*.test.{ts,tsx}",
 			"tests/integration/**/*.test.{ts,tsx}",
