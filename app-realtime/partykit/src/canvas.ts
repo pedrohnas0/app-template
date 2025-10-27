@@ -1,4 +1,5 @@
 import type * as Party from "partykit/server";
+import * as Y from "yjs";
 
 type CursorMessage = {
   type: "cursor";
@@ -25,7 +26,12 @@ type Message = CursorMessage | PresenceMessage;
  * Cada "room" (canvas) é uma instância deste servidor
  */
 export default class CanvasParty implements Party.Server {
-  constructor(readonly room: Party.Room) {}
+  // Yjs document (shared state)
+  doc: Y.Doc;
+
+  constructor(readonly room: Party.Room) {
+    this.doc = new Y.Doc();
+  }
 
   /**
    * Quando um usuário conecta
@@ -34,6 +40,10 @@ export default class CanvasParty implements Party.Server {
     console.log(
       `User ${conn.id} connected to room ${this.room.id}`
     );
+
+    // Enviar estado atual do Yjs
+    const state = Y.encodeStateAsUpdate(this.doc);
+    conn.send(state);
 
     // Envia lista de usuários conectados para o novo usuário
     const connections = [...this.room.getConnections()];
@@ -48,14 +58,23 @@ export default class CanvasParty implements Party.Server {
   /**
    * Quando recebe mensagem de um usuário
    */
-  onMessage(message: string, sender: Party.Connection) {
-    try {
-      const data: Message = JSON.parse(message);
+  onMessage(message: string | ArrayBuffer, sender: Party.Connection) {
+    if (message instanceof ArrayBuffer) {
+      // É um update do Yjs
+      Y.applyUpdate(this.doc, new Uint8Array(message));
 
-      // Broadcast para todos exceto o remetente
+      // Broadcast para outros
       this.room.broadcast(message, [sender.id]);
-    } catch (error) {
-      console.error("Failed to parse message:", error);
+    } else {
+      // Mensagem normal (cursor, etc)
+      try {
+        const data: Message = JSON.parse(message);
+
+        // Broadcast para todos exceto o remetente
+        this.room.broadcast(message, [sender.id]);
+      } catch (error) {
+        console.error("Failed to parse message:", error);
+      }
     }
   }
 

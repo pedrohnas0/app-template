@@ -3,9 +3,6 @@ import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { server } from "./mocks/server";
 
-// Set NODE_ENV for tests
-process.env.NODE_ENV = "test";
-
 // Mock env module to avoid @t3-oss/env client-side validation
 vi.mock("~/env", () => ({
 	env: {

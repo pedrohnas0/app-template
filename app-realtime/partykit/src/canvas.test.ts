@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import * as Y from 'yjs'
 import CanvasParty from './canvas'
 import {
   createMockRoom,
@@ -248,6 +249,108 @@ describe('CanvasParty', () => {
           type: 'user-left',
           userId: 'user-1',
         }),
+        ['user-1']
+      )
+    })
+  })
+
+  describe('Yjs integration', () => {
+    it('should have a Yjs document', () => {
+      expect(party.doc).toBeDefined()
+      expect(party.doc).toBeInstanceOf(Y.Doc)
+    })
+
+    it('should send Yjs state to new connection', () => {
+      const conn = createMockConnection('user-1')
+      const ctx = createMockConnectionContext()
+
+      // Adicionar dados ao doc
+      const shapes = party.doc.getArray('shapes')
+      shapes.push([{ id: 'shape-1', type: 'rect', x: 0, y: 0 }])
+
+      party.onConnect(conn, ctx)
+
+      // Deve enviar estado Yjs (ArrayBuffer/Uint8Array)
+      expect(conn.send).toHaveBeenCalledWith(expect.any(Uint8Array))
+    })
+
+    it('should handle Yjs updates as ArrayBuffer', () => {
+      const sender = createMockConnection('user-1')
+      mockRoom._addConnection(sender)
+
+      // Criar um update Yjs
+      const doc = new Y.Doc()
+      const shapes = doc.getArray('shapes')
+      shapes.push([{ id: 'shape-1', type: 'rect', x: 0, y: 0 }])
+      const update = Y.encodeStateAsUpdate(doc)
+
+      // Enviar update como ArrayBuffer
+      party.onMessage(update.buffer, sender)
+
+      // Deve aplicar o update e fazer broadcast
+      expect(mockRoom.broadcast).toHaveBeenCalledWith(
+        expect.any(ArrayBuffer),
+        ['user-1']
+      )
+
+      // Verificar que o shape foi adicionado ao doc do party
+      const partyShapes = party.doc.getArray('shapes')
+      expect(partyShapes.length).toBe(1)
+      expect(partyShapes.get(0)).toMatchObject({
+        id: 'shape-1',
+        type: 'rect',
+      })
+    })
+
+    it('should sync shapes between multiple clients via Yjs', () => {
+      const user1 = createMockConnection('user-1')
+      const user2 = createMockConnection('user-2')
+
+      mockRoom._addConnection(user1)
+      mockRoom._addConnection(user2)
+
+      // User1 conecta e recebe estado inicial (vazio)
+      party.onConnect(user1, createMockConnectionContext())
+
+      // User1 adiciona shape
+      const doc1 = new Y.Doc()
+      const shapes1 = doc1.getArray('shapes')
+      shapes1.push([{ id: 'shape-1', type: 'rect', x: 0, y: 0 }])
+      const update1 = Y.encodeStateAsUpdate(doc1)
+
+      party.onMessage(update1.buffer, user1)
+
+      // Party doc deve ter o shape
+      const partyShapes = party.doc.getArray('shapes')
+      expect(partyShapes.length).toBe(1)
+
+      // Broadcast deve ter sido chamado para user2
+      expect(mockRoom.broadcast).toHaveBeenCalledWith(
+        expect.any(ArrayBuffer),
+        ['user-1']
+      )
+    })
+
+    it('should still handle JSON messages (cursor, presence)', () => {
+      const sender = createMockConnection('user-1')
+      mockRoom._addConnection(sender)
+
+      const message = {
+        type: 'cursor',
+        userId: 'user-1',
+        name: 'John',
+        avatar: 'avatar.png',
+        x: 100,
+        y: 200,
+        color: '#FF0000',
+      }
+
+      // Enviar como string (não ArrayBuffer)
+      party.onMessage(JSON.stringify(message), sender)
+
+      // Deve fazer broadcast como string
+      expect(mockRoom.broadcast).toHaveBeenCalledWith(
+        JSON.stringify(message),
         ['user-1']
       )
     })

@@ -18,7 +18,10 @@ export const shapeRouter = createTRPCRouter({
 		.input(shapeCreateSchema)
 		.mutation(async ({ ctx, input }) => {
 			return ctx.db.shape.create({
-				data: input,
+				data: {
+					...input,
+					data: input.data as any, // Prisma Json type workaround
+				},
 			});
 		}),
 
@@ -51,11 +54,14 @@ export const shapeRouter = createTRPCRouter({
 	update: publicProcedure
 		.input(shapeUpdateSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { id, ...data } = input;
+			const { id, data: shapeData, ...restData } = input;
 
 			return ctx.db.shape.update({
 				where: { id },
-				data,
+				data: {
+					...restData,
+					...(shapeData && { data: shapeData as any }), // Prisma Json type workaround
+				},
 			});
 		}),
 
@@ -80,10 +86,13 @@ export const shapeRouter = createTRPCRouter({
 			// Update each shape individually
 			// Using Promise.allSettled to continue even if some shapes don't exist
 			const results = await Promise.allSettled(
-				input.updates.map(({ id, ...data }) =>
+				input.updates.map(({ id, data: shapeData, ...restData }) =>
 					ctx.db.shape.update({
 						where: { id },
-						data,
+						data: {
+							...restData,
+							...(shapeData && { data: shapeData as any }), // Prisma Json type workaround
+						},
 					}),
 				),
 			);
