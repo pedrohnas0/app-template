@@ -211,7 +211,7 @@ export function useYjsShapes(room: string): UseYjsShapesReturn {
 
 		// Deletar shape antiga e inserir shape atualizada
 		shapesArray.delete(index, 1);
-		shapesArray.insert(index, [{ ...current, ...updates }]);
+		shapesArray.insert(index, [{ ...current, ...updates } as Shape]);
 	};
 
 	/**

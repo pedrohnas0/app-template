@@ -145,15 +145,15 @@ export function usePartyKit({
 		};
 
 		// Handler: erro de conexão
-		const handleError = (event: ErrorEvent) => {
-			onErrorRef.current?.(event);
+		const handleError = (event: Event) => {
+			onErrorRef.current?.(event as ErrorEvent);
 		};
 
 		// Registrar event listeners
 		partySocket.addEventListener("open", handleOpen);
 		partySocket.addEventListener("message", handleMessage);
 		partySocket.addEventListener("close", handleClose);
-		partySocket.addEventListener("error", handleError);
+		partySocket.addEventListener("error", handleError as EventListener);
 
 		setSocket(partySocket);
 
