@@ -123,3 +123,27 @@
     @apply bg-background text-foreground;
 	}
 }
+
+/* React Flow customization to match shadcn Stone theme */
+.react-flow {
+  --xy-background-color: var(--background);
+  --xy-background-pattern-dots-color-default: oklch(0.269 0 0 / 0.05);
+}
+
+.react-flow__background {
+  background-color: var(--background) !important;
+}
+
+.react-flow__background pattern circle {
+  opacity: 0.1 !important;
+}
+
+.react-flow__controls {
+  button {
+    @apply bg-background border-border text-foreground;
+
+    &:hover {
+      @apply bg-secondary;
+    }
+  }
+}

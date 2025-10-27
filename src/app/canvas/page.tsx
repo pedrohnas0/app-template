@@ -12,6 +12,15 @@ import { cn } from "~/lib/utils";
 import Image from "next/image";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  BackgroundVariant,
+  type Node,
+  type Edge,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
 type Position = {
   x: number;
@@ -104,6 +113,9 @@ export default function CollaborativeCanvasPage() {
     x: 70,
     y: 50,
   });
+
+  const [nodes] = useState<Node[]>([]);
+  const [edges] = useState<Edge[]>([]);
 
   const containerRef = useRef<HTMLElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -201,8 +213,24 @@ export default function CollaborativeCanvasPage() {
   return (
     <main
       ref={containerRef}
-      className="relative h-screen w-screen overflow-hidden bg-[radial-gradient(var(--color-secondary),transparent_1px)] [background-size:16px_16px] cursor-none select-none"
+      className="relative h-screen w-screen overflow-hidden cursor-none select-none"
     >
+      {/* React Flow Canvas */}
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        fitView
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={16}
+          size={1}
+          color="rgba(68, 64, 60, 0.6)"
+        />
+        <Controls />
+      </ReactFlow>
+
       {/* Header */}
       <div className="absolute top-8 left-8 z-10 pointer-events-auto cursor-auto">
         <h1 className="text-3xl font-bold">Collaborative Canvas</h1>
