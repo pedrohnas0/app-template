@@ -174,12 +174,14 @@ describe("CollaborativeCursors", () => {
 				},
 			];
 
-			const { container } = render(<CollaborativeCursors users={users} />);
+			const { container } = render(
+				<CollaborativeCursors users={users} isViewportChanging={false} />,
+			);
 
 			const cursor = container.querySelector('[data-testid="cursor-user-1"]');
 			expect(cursor).toHaveClass("transition-all");
 			expect(cursor).toHaveClass("duration-150");
-		expect(cursor).toHaveClass("ease-out");
+		expect(cursor).toHaveClass("ease-linear");
 		});
 
 		it("should default to smooth transition when isCurrentUser not specified", () => {
@@ -193,13 +195,79 @@ describe("CollaborativeCursors", () => {
 				},
 			];
 
-			const { container } = render(<CollaborativeCursors users={users} />);
+			const { container } = render(
+				<CollaborativeCursors users={users} isViewportChanging={false} />,
+			);
 
 			const cursor = container.querySelector('[data-testid="cursor-user-1"]');
 			expect(cursor).toHaveClass("transition-all");
 			expect(cursor).toHaveClass("duration-150");
-		expect(cursor).toHaveClass("ease-out");
+		expect(cursor).toHaveClass("ease-linear");
 		});
+
+	it("should disable transitions when isViewportChanging is true", () => {
+		const users: TestUser[] = [
+			{
+				id: "user-1",
+				name: "Other User",
+				avatar: "https://github.com/otheruser.png",
+				x: 50,
+				y: 50,
+				isCurrentUser: false,
+			},
+		];
+
+		const { container } = render(
+			<CollaborativeCursors users={users} isViewportChanging={true} />,
+		);
+
+		const cursor = container.querySelector('[data-testid="cursor-user-1"]');
+		expect(cursor).toHaveClass("transition-none");
+		expect(cursor).not.toHaveClass("transition-all");
+	});
+
+	it("should disable transitions for current user during viewport changes", () => {
+		const users: TestUser[] = [
+			{
+				id: "user-1",
+				name: "Current User",
+				avatar: "https://github.com/currentuser.png",
+				x: 50,
+				y: 50,
+				isCurrentUser: true,
+			},
+		];
+
+		const { container } = render(
+			<CollaborativeCursors users={users} isViewportChanging={true} />,
+		);
+
+		const cursor = container.querySelector('[data-testid="cursor-user-1"]');
+		expect(cursor).toHaveClass("transition-none");
+		expect(cursor).not.toHaveClass("transition-all");
+	});
+
+	it("should enable transitions when viewport is stable (isViewportChanging=false)", () => {
+		const users: TestUser[] = [
+			{
+				id: "user-1",
+				name: "Other User",
+				avatar: "https://github.com/otheruser.png",
+				x: 50,
+				y: 50,
+				isCurrentUser: false,
+			},
+		];
+
+		const { container } = render(
+			<CollaborativeCursors users={users} isViewportChanging={false} />,
+		);
+
+		const cursor = container.querySelector('[data-testid="cursor-user-1"]');
+		expect(cursor).toHaveClass("transition-all");
+		expect(cursor).toHaveClass("duration-150");
+		expect(cursor).toHaveClass("ease-linear");
+	});
 	});
 
 	describe("colors", () => {

@@ -1,22 +1,50 @@
 import { useCallback, useMemo } from "react";
 import type { Node, NodeChange, OnNodesChange } from "@xyflow/react";
 import { applyNodeChanges } from "@xyflow/react";
-import { useYjsShapes, type ShapeWithoutId } from "./use-yjs-shapes";
+import {
+	useYjsShapes,
+	type ShapeWithoutId,
+	type UseYjsShapesOptions,
+} from "./use-yjs-shapes";
 import type { ShapeNodeData } from "~/components/kibo-ui/shape-node";
 
 /**
  * Hook que adapta shapes colaborativas do Yjs para nodes do React Flow
  *
+ * ⚠️ NOVA API (Plan 02): Requer conexão PartyKit externa
+ *
  * Integra useYjsShapes com React Flow, convertendo shapes em nodes
  * e sincronizando mudanças de posição (drag & drop) de volta para o Yjs.
+ * A conexão WebSocket deve ser gerenciada externamente.
  *
- * @param room - ID da room do PartyKit para sincronização
+ * @param options - Configurações do hook
+ * @param options.send - Função para enviar Yjs updates (de usePartyKit)
+ * @param options.onYjsUpdate - Callback para registrar handler de updates remotos
  * @returns Objeto contendo nodes, handlers e funções CRUD
  *
  * @example
  * ```tsx
  * function CanvasPage() {
- *   const { nodes, onNodesChange, addShape } = useReactFlowShapes("canvas-123");
+ *   // 1. Criar conexão PartyKit única
+ *   const { send } = usePartyKit({
+ *     room: "canvas-123",
+ *     onMessage: (data) => {
+ *       if (data instanceof ArrayBuffer) {
+ *         // Processar Yjs update
+ *       } else {
+ *         // Processar cursor/outro
+ *       }
+ *     }
+ *   });
+ *
+ *   // 2. Usar hook com conexão externa
+ *   const { nodes, onNodesChange, addShape } = useReactFlowShapes({
+ *     send,
+ *     onYjsUpdate: (handler) => {
+ *       // Registrar handler
+ *       return () => {}; // cleanup
+ *     }
+ *   });
  *
  *   return (
  *     <ReactFlow
@@ -37,10 +65,11 @@ import type { ShapeNodeData } from "~/components/kibo-ui/shape-node";
  * - Sincroniza posição no drag & drop
  * - Usa defaultValues inteligentes para dimensões
  * - Compatible com React Flow 12+
+ * - Requer conexão PartyKit EXTERNA (previne múltiplas conexões)
  */
-export function useReactFlowShapes(room: string) {
-	// Hook de shapes colaborativas (Yjs + PartyKit)
-	const { shapes, addShape, updateShape, deleteShape } = useYjsShapes(room);
+export function useReactFlowShapes(options: UseYjsShapesOptions) {
+	// Hook de shapes colaborativas (Yjs, sem conexão interna)
+	const { shapes, addShape, updateShape, deleteShape } = useYjsShapes(options);
 
 	/**
 	 * Converte shapes Yjs em nodes do React Flow
@@ -77,10 +106,6 @@ export function useReactFlowShapes(room: string) {
 					}
 				}
 			});
-
-			// Aplicar mudanças localmente (React Flow) para feedback imediato
-			// Note: isso é apenas para UI - a sincronização real vem do Yjs
-			// Remover isso se causar conflitos
 		},
 		[updateShape],
 	);

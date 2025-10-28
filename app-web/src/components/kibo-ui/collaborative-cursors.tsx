@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import { cn } from "~/lib/utils";
 import {
@@ -21,10 +23,10 @@ export type CollaborativeUser = {
 	/** URL do avatar */
 	avatar: string;
 
-	/** Posição X (0-100%) */
+	/** Posição X (pixels absolutos) */
 	x: number;
 
-	/** Posição Y (0-100%) */
+	/** Posição Y (pixels absolutos) */
 	y: number;
 
 	/** Mensagem opcional */
@@ -132,8 +134,8 @@ export function CollaborativeCursors({
 							isCurrentUser ? "transition-none" : "transition-all duration-150 ease-out",
 						)}
 						style={{
-							top: `${user.y}%`,
-							left: `${user.x}%`,
+							top: `${user.y}px`,
+							left: `${user.x}px`,
 						}}
 					>
 						<CursorPointer className={cn(color.foreground)} />

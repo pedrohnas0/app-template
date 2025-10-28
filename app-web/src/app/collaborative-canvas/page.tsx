@@ -1,11 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
 	Background,
 	BackgroundVariant,
 	type Edge,
 	Panel,
 	ReactFlow,
+	ReactFlowProvider,
+	useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { AvatarStack } from "~/components/kibo-ui/avatar-stack";
@@ -34,32 +37,22 @@ type UserColor = (typeof userColors)[number];
 /**
  * Usuário mock para demo (será substituído por auth real)
  */
-const currentUser = {
+const getCurrentUser = () => ({
 	id: crypto.randomUUID(),
 	name: "Você",
 	avatar: "https://github.com/pedrohnas0.png",
 	color: userColors[0],
-};
+});
 
 /**
- * Página de Canvas Colaborativo
- *
- * Demonstra colaboração em tempo real usando:
- * - PartyKit (WebSocket)
- * - React Flow para canvas
- * - Cursores em tempo real
- * - Design shadcn/ui com glass morphism
- *
- * @remarks
- * Para testar colaboração:
- * 1. Abra esta página em 2+ navegadores
- * 2. Mova o mouse - verá cursores dos outros
+ * Componente interno que usa useReactFlow para conversão de coordenadas
  */
-export default function CollaborativeCanvasPage() {
+function CollaborativeCanvasInner() {
 	// Room ID (pode vir da URL no futuro)
 	const roomId = "demo-canvas";
 
 	// Estado local
+	const [currentUser] = useState(getCurrentUser);
 	const [myPosition, setMyPosition] = useState({ x: 50, y: 50 });
 	const [otherUsers, setOtherUsers] = useState<CollaborativeUser[]>([]);
 	const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
@@ -68,17 +61,39 @@ export default function CollaborativeCanvasPage() {
 	const rafRef = useRef<number | null>(null);
 	const lastSendTimeRef = useRef<number>(0);
 
-	// Hook para shapes colaborativas (React Flow + Yjs)
-	const { nodes, onNodesChange, addShape } = useReactFlowShapes(roomId);
+	// Ref para handler de Yjs updates remotos
+	const yjsUpdateHandlerRef = useRef<((update: Uint8Array) => void) | null>(
+		null,
+	);
 
 	// Node types para React Flow
 	const nodeTypes = useMemo(() => ({ shapeNode: ShapeNode }), []);
 
-	// Hook PartyKit
+	// React Flow instance para conversão de coordenadas
+	const reactFlowInstance = useReactFlow();
+
+	// Hook PartyKit - CONEXÃO ÚNICA para cursores E shapes
 	const { send, isConnected } = usePartyKit({
 		room: roomId,
 		onMessage: (data: any) => {
-			// Handler para mensagens do servidor
+			// ====== PROCESSAR ARRAYBUFFER (Yjs updates) ======
+			if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+				console.log("📦 [PAGE] Recebeu ArrayBuffer:", data);
+				// Converter ArrayBuffer para Uint8Array se necessário
+				const update =
+					data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+
+				// Aplicar update via handler registrado
+				if (yjsUpdateHandlerRef.current) {
+					console.log("✅ [PAGE] Handler registrado, aplicando update");
+					yjsUpdateHandlerRef.current(update);
+				} else {
+					console.warn("⚠️ [PAGE] Handler NÃO registrado!");
+				}
+				return;
+			}
+
+			// ====== PROCESSAR JSON (cursores e outros) ======
 			if (data.type === "cursor") {
 				// Atualizar posição do cursor de outro usuário
 				setOtherUsers((users) => {
@@ -111,6 +126,25 @@ export default function CollaborativeCanvasPage() {
 		},
 	});
 
+	// Callback para registrar handler de Yjs updates
+	const onYjsUpdate = useCallback(
+		(handler: (update: Uint8Array) => void) => {
+			console.log("🔧 [PAGE] Registrando handler de Yjs updates");
+			yjsUpdateHandlerRef.current = handler;
+			return () => {
+				console.log("🧹 [PAGE] Limpando handler de Yjs updates");
+				yjsUpdateHandlerRef.current = null;
+			};
+		},
+		[],
+	);
+
+	// Hook para shapes colaborativas (React Flow + Yjs)
+	const { nodes, onNodesChange, addShape } = useReactFlowShapes({
+		send,
+		onYjsUpdate,
+	});
+
 	// Track mouse movement com requestAnimationFrame
 	const handlePointerMove = useCallback(
 		(e: PointerEvent) => {
@@ -125,35 +159,33 @@ export default function CollaborativeCanvasPage() {
 			rafRef.current = requestAnimationFrame(() => {
 				if (!containerRef.current) return;
 
-				const bounds = containerRef.current.getBoundingClientRect();
-				const x = ((e.clientX - bounds.left) / bounds.width) * 100;
-				const y = ((e.clientY - bounds.top) / bounds.height) * 100;
+				// Converter coordenadas de tela → canvas do React Flow (considerando zoom/pan)
+				const flowPosition = reactFlowInstance.screenToFlowPosition({
+					x: e.clientX,
+					y: e.clientY,
+				});
 
-				// Clamp values
-				const clampedX = Math.max(0, Math.min(100, x));
-				const clampedY = Math.max(0, Math.min(100, y));
-
-				setMyPosition({ x: clampedX, y: clampedY });
+				setMyPosition(flowPosition);
 
 				// Throttle: só envia se passou pelo menos 50ms desde o último envio
 				const now = Date.now();
 				if (now - lastSendTimeRef.current >= 50) {
 					lastSendTimeRef.current = now;
 
-					// Broadcast posição do cursor
+					// Broadcast posição do cursor (já em coordenadas do canvas)
 					send({
 						type: "cursor",
 						userId: currentUser.id,
 						name: currentUser.name,
 						avatar: currentUser.avatar,
-						x: clampedX,
-						y: clampedY,
+						x: flowPosition.x,
+						y: flowPosition.y,
 						color: currentUser.color,
 					});
 				}
 			});
 		},
-		[isConnected, send],
+		[isConnected, send, reactFlowInstance],
 	);
 
 	// Prevent context menu
@@ -166,63 +198,63 @@ export default function CollaborativeCanvasPage() {
 		(event: React.MouseEvent) => {
 			if (!selectedTool) return;
 
-			// Pegar posição do clique no canvas
-			const canvasElement = event.currentTarget as HTMLElement;
-			const bounds = canvasElement.getBoundingClientRect();
-			const x = event.clientX - bounds.left;
-			const y = event.clientY - bounds.top;
+			// Converter posição do clique para coordenadas do canvas (considerando zoom/pan)
+			const flowPosition = reactFlowInstance.screenToFlowPosition({
+				x: event.clientX,
+				y: event.clientY,
+			});
 
 			// Criar shape baseado na ferramenta selecionada
 			switch (selectedTool) {
 				case "rect":
 					addShape({
 						type: "rect",
-						x,
-						y,
+						x: flowPosition.x,
+						y: flowPosition.y,
 						width: 100,
 						height: 80,
 						fill: "#3b82f6", // blue-500
-					});
+					} as Omit<import("~/hooks/use-yjs-shapes").RectShape, "id">);
 					break;
 
 				case "circle":
 					addShape({
 						type: "circle",
-						x,
-						y,
+						x: flowPosition.x,
+						y: flowPosition.y,
 						radius: 50,
 						fill: "#10b981", // emerald-500
-					});
+					} as Omit<import("~/hooks/use-yjs-shapes").CircleShape, "id">);
 					break;
 
 				case "text":
 					addShape({
 						type: "text",
-						x,
-						y,
+						x: flowPosition.x,
+						y: flowPosition.y,
 						text: "Texto",
 						fill: "#ef4444", // red-500
 						fontSize: 16,
-					});
+					} as Omit<import("~/hooks/use-yjs-shapes").TextShape, "id">);
 					break;
 
 				case "line":
 					addShape({
 						type: "line",
-						x,
-						y,
-						x2: x + 100,
-						y2: y,
+						x: flowPosition.x,
+						y: flowPosition.y,
+						x2: flowPosition.x + 100,
+						y2: flowPosition.y,
 						stroke: "#8b5cf6", // violet-500
 						strokeWidth: 2,
-					});
+					} as Omit<import("~/hooks/use-yjs-shapes").LineShape, "id">);
 					break;
 			}
 
 			// Desselecionar ferramenta após criar shape
 			setSelectedTool(null);
 		},
-		[selectedTool, addShape],
+		[selectedTool, addShape, reactFlowInstance],
 	);
 
 	// Setup pointer events
@@ -244,16 +276,33 @@ export default function CollaborativeCanvasPage() {
 
 
 	// Todos os usuários (eu + outros)
+	// Converter coordenadas do canvas (flow) → tela (screen) para renderização
+	const myScreenPosition = reactFlowInstance.flowToScreenPosition({
+		x: myPosition.x,
+		y: myPosition.y,
+	});
+
 	const allUsers: CollaborativeUser[] = [
 		{
 			id: currentUser.id,
 			name: currentUser.name,
 			avatar: currentUser.avatar,
-			x: myPosition.x,
-			y: myPosition.y,
+			x: myScreenPosition.x,
+			y: myScreenPosition.y,
 			isCurrentUser: true,
 		},
-		...otherUsers,
+		...otherUsers.map((user) => {
+			// Converter posição de cada usuário de flow → screen
+			const screenPos = reactFlowInstance.flowToScreenPosition({
+				x: user.x,
+				y: user.y,
+			});
+			return {
+				...user,
+				x: screenPos.x,
+				y: screenPos.y,
+			};
+		}),
 	];
 
 	return (
@@ -331,5 +380,27 @@ export default function CollaborativeCanvasPage() {
 			{/* Cursores Colaborativos */}
 			<CollaborativeCursors users={allUsers} />
 		</main>
+	);
+}
+
+/**
+ * Página de Canvas Colaborativo
+ *
+ * Demonstra colaboração em tempo real usando:
+ * - PartyKit (WebSocket)
+ * - React Flow para canvas
+ * - Cursores em tempo real
+ * - Design shadcn/ui com glass morphism
+ *
+ * @remarks
+ * Para testar colaboração:
+ * 1. Abra esta página em 2+ navegadores
+ * 2. Mova o mouse - verá cursores dos outros
+ */
+export default function CollaborativeCanvasPage() {
+	return (
+		<ReactFlowProvider>
+			<CollaborativeCanvasInner />
+		</ReactFlowProvider>
 	);
 }

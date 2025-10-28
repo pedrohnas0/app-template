@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useReactFlowShapes } from "~/hooks/use-reactflow-shapes";
 import type { NodePositionChange } from "@xyflow/react";
+import type { UseYjsShapesOptions } from "~/hooks/use-yjs-shapes";
 
 // Mock useYjsShapes
 vi.mock("~/hooks/use-yjs-shapes", () => ({
@@ -14,13 +15,42 @@ vi.mock("~/hooks/use-yjs-shapes", () => ({
 }));
 
 describe("useReactFlowShapes", () => {
+	let mockSend: ReturnType<typeof vi.fn>;
+	let mockOnYjsUpdate: ((handler: (update: Uint8Array) => void) => () => void) | undefined;
+
 	beforeEach(() => {
+		mockSend = vi.fn();
+		mockOnYjsUpdate = vi.fn((handler) => () => {});
 		vi.clearAllMocks();
+	});
+
+	describe("initialization", () => {
+		it("should pass options to useYjsShapes", async () => {
+			const { useYjsShapes } = await import("~/hooks/use-yjs-shapes");
+
+			renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// Verificar que useYjsShapes foi chamado com as opções corretas
+			expect(useYjsShapes).toHaveBeenCalledWith({
+				send: mockSend,
+				onYjsUpdate: mockOnYjsUpdate,
+			});
+		});
 	});
 
 	describe("nodes conversion", () => {
 		it("should convert empty shapes array to empty nodes array", () => {
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			expect(result.current.nodes).toEqual([]);
 		});
@@ -46,7 +76,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: vi.fn(),
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			expect(result.current.nodes).toHaveLength(1);
 			expect(result.current.nodes[0]).toMatchObject({
@@ -97,7 +132,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: vi.fn(),
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			expect(result.current.nodes).toHaveLength(2);
 			expect(result.current.nodes[0]?.id).toBe("rect-1");
@@ -127,7 +167,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: vi.fn(),
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			// Simular drag end
 			const positionChange: NodePositionChange = {
@@ -168,7 +213,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: vi.fn(),
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			// Simular dragging (ainda não terminou)
 			const positionChange: NodePositionChange = {
@@ -199,7 +249,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: vi.fn(),
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			act(() => {
 				result.current.addShape({
@@ -226,7 +281,12 @@ describe("useReactFlowShapes", () => {
 				deleteShape: mockDeleteShape,
 			});
 
-			const { result } = renderHook(() => useReactFlowShapes("test-room"));
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
 
 			act(() => {
 				result.current.deleteShape("shape-1");

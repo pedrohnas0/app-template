@@ -59,16 +59,21 @@ export default class CanvasParty implements Party.Server {
    * Quando recebe mensagem de um usuário
    */
   onMessage(message: string | ArrayBuffer, sender: Party.Connection) {
+    console.log("📨 [SERVER] Recebeu mensagem de", sender.id, "- Tipo:", message instanceof ArrayBuffer ? "ArrayBuffer" : "JSON");
+
     if (message instanceof ArrayBuffer) {
       // É um update do Yjs
+      console.log("📦 [SERVER] ArrayBuffer recebido:", message.byteLength, "bytes");
       Y.applyUpdate(this.doc, new Uint8Array(message));
 
       // Broadcast para outros
+      console.log("📡 [SERVER] Broadcasting ArrayBuffer para outros clientes");
       this.room.broadcast(message, [sender.id]);
     } else {
       // Mensagem normal (cursor, etc)
       try {
         const data: Message = JSON.parse(message);
+        console.log("💬 [SERVER] JSON recebido:", data.type);
 
         // Broadcast para todos exceto o remetente
         this.room.broadcast(message, [sender.id]);

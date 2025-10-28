@@ -103,6 +103,7 @@ export function usePartyKit({
 	// Efeito principal: criar e gerenciar conexão WebSocket
 	useEffect(() => {
 		// Criar conexão PartySocket
+		console.log("🔌 [PARTYKIT] Conectando ao host:", process.env.NEXT_PUBLIC_PARTYKIT_HOST);
 		const partySocket = new PartySocket({
 			host: process.env.NEXT_PUBLIC_PARTYKIT_HOST!,
 			room,
@@ -118,21 +119,39 @@ export function usePartyKit({
 			try {
 				// Se for ArrayBuffer, passar direto (usado pelo Yjs para sync CRDT)
 				if (event.data instanceof ArrayBuffer) {
+					console.log("📥 [PARTYKIT] Recebeu ArrayBuffer:", event.data.byteLength, "bytes");
 					onMessageRef.current?.(event.data);
+					return;
+				}
+
+				// Se for Blob, converter para ArrayBuffer
+				if (event.data instanceof Blob) {
+					console.log("📥 [PARTYKIT] Recebeu Blob:", event.data.size, "bytes - convertendo para ArrayBuffer");
+					event.data.arrayBuffer().then((buffer) => {
+						console.log("✅ [PARTYKIT] Blob convertido para ArrayBuffer:", buffer.byteLength, "bytes");
+						onMessageRef.current?.(buffer);
+					});
 					return;
 				}
 
 				// Se for string, tentar parsear JSON
 				if (typeof event.data === "string") {
 					const parsed = JSON.parse(event.data);
+					console.log("📥 [PARTYKIT] Recebeu JSON:", parsed.type || "unknown");
 					onMessageRef.current?.(parsed);
 					return;
 				}
 
-				// Outros tipos, passar direto
+				// Outros tipos, logar detalhes
+				console.log("📥 [PARTYKIT] Recebeu tipo desconhecido:", {
+					type: typeof event.data,
+					constructor: event.data?.constructor?.name,
+					data: event.data
+				});
 				onMessageRef.current?.(event.data);
 			} catch (error) {
 				// Erro ao parsear JSON - notificar via onError
+				console.error("❌ [PARTYKIT] Erro ao processar mensagem:", error);
 				onErrorRef.current?.(
 					error instanceof Error ? error : new Error(String(error)),
 				);
@@ -171,16 +190,19 @@ export function usePartyKit({
 	const send = (data: unknown) => {
 		// Guard: não enviar se socket não estiver disponível
 		if (!socket) {
+			console.warn("⚠️ [PARTYKIT] Tentou enviar mas socket não disponível");
 			return;
 		}
 
-		// Se for ArrayBuffer, enviar direto (Yjs sync)
-		if (data instanceof ArrayBuffer) {
+		// Se for ArrayBuffer ou Uint8Array, enviar direto (Yjs sync)
+		if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+			console.log("📡 [PARTYKIT] Enviando ArrayBuffer/Uint8Array:", data.byteLength || data.length, "bytes");
 			socket.send(data);
 			return;
 		}
 
 		// Caso contrário, stringify JSON
+		console.log("📡 [PARTYKIT] Enviando JSON:", data);
 		socket.send(JSON.stringify(data));
 	};
 

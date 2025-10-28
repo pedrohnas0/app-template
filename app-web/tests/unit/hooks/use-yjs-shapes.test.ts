@@ -10,79 +10,75 @@ import {
 /**
  * Testes para useYjsShapes - Hook para gerenciar shapes colaborativas com Yjs
  *
+ * NOVA API (Plan 02):
+ * - Não cria conexão PartyKit interna
+ * - Recebe `send` função externa para enviar updates
+ * - Recebe callback `onYjsUpdate` para registrar handler de updates remotos
+ *
  * Testa funcionalidades de:
  * - Inicialização do Yjs Doc
  * - CRUD de shapes (add, update, delete)
- * - Sincronização com PartyKit
- * - Observers do Yjs
- * - Integração com usePartyKit
+ * - Envio de updates via `send` externo
+ * - Aplicação de updates remotos via callback
  */
 
-// Mock do usePartyKit
-let mockSend: ReturnType<typeof vi.fn>;
-let mockSocket: any;
-let mockOnMessage: ((data: unknown) => void) | undefined;
-let mockUsePartyKit: ReturnType<typeof vi.fn>;
-
-vi.mock("~/hooks/use-partykit", () => ({
-	usePartyKit: vi.fn((options: any) => {
-		// Guardar callback para simular mensagens
-		mockOnMessage = options.onMessage;
-
-		return {
-			socket: mockSocket,
-			isConnected: true,
-			send: mockSend,
-		};
-	}),
-}));
-
 describe("useYjsShapes", () => {
-	beforeEach(async () => {
-		mockSend = vi.fn();
-		mockSocket = { readyState: 1 }; // OPEN
-		mockOnMessage = undefined;
+	let mockSend: ReturnType<typeof vi.fn>;
+	let mockOnYjsUpdate: ((handler: (update: Uint8Array) => void) => () => void) | undefined;
+	let remoteUpdateHandler: ((update: Uint8Array) => void) | undefined;
 
-		// Obter mock do usePartyKit
-		const module = await import("~/hooks/use-partykit");
-		mockUsePartyKit = module.usePartyKit as ReturnType<typeof vi.fn>;
+	beforeEach(() => {
+		mockSend = vi.fn();
+
+		// Mock para onYjsUpdate - registra o handler e retorna cleanup
+		mockOnYjsUpdate = vi.fn((handler) => {
+			remoteUpdateHandler = handler;
+			return () => {
+				remoteUpdateHandler = undefined;
+			};
+		});
 
 		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		remoteUpdateHandler = undefined;
 	});
 
 	describe("initialization", () => {
 		it("should initialize with empty shapes array", () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				})
+			);
 
 			expect(result.current.shapes).toEqual([]);
 		});
 
-		it("should create Yjs document and shapes array", () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
-
-			// Deve ter criado um Yjs Doc internamente
-			expect(result.current.shapes).toBeDefined();
-		});
-
-		it("should connect to PartyKit with correct room", () => {
-			renderHook(() => useYjsShapes("test-room-123"));
-
-			expect(mockUsePartyKit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					room: "test-room-123",
-					onMessage: expect.any(Function),
-				}),
+		it("should register Yjs update handler via callback", () => {
+			renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				})
 			);
+
+			// Deve ter chamado onYjsUpdate para registrar handler
+			expect(mockOnYjsUpdate).toHaveBeenCalledWith(expect.any(Function));
 		});
 	});
 
 	describe("addShape", () => {
 		it("should add a new shape to the array", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				})
+			);
 
 			const newShape = {
 				type: "rect" as const,
@@ -103,7 +99,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should generate unique ID for new shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			result.current.addShape({
 				type: "circle",
@@ -130,7 +129,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should send Yjs update through PartyKit after adding shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			result.current.addShape({
 				type: "rect",
@@ -153,7 +155,10 @@ describe("useYjsShapes", () => {
 
 	describe("updateShape", () => {
 		it("should update an existing shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			// Adicionar shape
 			result.current.addShape({
@@ -190,7 +195,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should send Yjs update after updating shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			result.current.addShape({
 				type: "circle",
@@ -217,7 +225,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should not error when updating non-existent shape", () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			expect(() => {
 				result.current.updateShape("non-existent-id", { x: 100 });
@@ -229,7 +240,10 @@ describe("useYjsShapes", () => {
 
 	describe("deleteShape", () => {
 		it("should delete an existing shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			// Adicionar shape
 			result.current.addShape({
@@ -256,7 +270,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should send Yjs update after deleting shape", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			result.current.addShape({
 				type: "rect",
@@ -284,7 +301,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should not error when deleting non-existent shape", () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			expect(() => {
 				result.current.deleteShape("non-existent-id");
@@ -294,7 +314,10 @@ describe("useYjsShapes", () => {
 
 	describe("Yjs synchronization", () => {
 		it("should apply remote Yjs updates", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			// Criar um doc remoto
 			const remoteDoc = new Y.Doc();
@@ -315,9 +338,9 @@ describe("useYjsShapes", () => {
 			// Criar update do remote doc
 			const update = Y.encodeStateAsUpdate(remoteDoc);
 
-			// Simular recebimento da mensagem
-			if (mockOnMessage) {
-				mockOnMessage(update);
+			// Simular recebimento de update remoto via handler registrado
+			if (remoteUpdateHandler) {
+				remoteUpdateHandler(update);
 			}
 
 			await waitFor(() => {
@@ -332,7 +355,10 @@ describe("useYjsShapes", () => {
 		});
 
 		it("should handle multiple remote updates", async () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
+			const { result } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			const remoteDoc = new Y.Doc();
 			const remoteShapes = remoteDoc.getArray("shapes");
@@ -352,8 +378,8 @@ describe("useYjsShapes", () => {
 
 			const update1 = Y.encodeStateAsUpdate(remoteDoc);
 
-			if (mockOnMessage) {
-				mockOnMessage(update1);
+			if (remoteUpdateHandler) {
+				remoteUpdateHandler(update1);
 			}
 
 			await waitFor(() => {
@@ -374,8 +400,8 @@ describe("useYjsShapes", () => {
 
 			const update2 = Y.encodeStateAsUpdate(remoteDoc);
 
-			if (mockOnMessage) {
-				mockOnMessage(update2);
+			if (remoteUpdateHandler) {
+				remoteUpdateHandler(update2);
 			}
 
 			await waitFor(() => {
@@ -383,22 +409,14 @@ describe("useYjsShapes", () => {
 			});
 		});
 
-		it("should ignore non-ArrayBuffer messages", () => {
-			const { result } = renderHook(() => useYjsShapes("test-room"));
-
-			// Mensagem JSON (não Yjs)
-			if (mockOnMessage) {
-				mockOnMessage({ type: "cursor", x: 100, y: 200 });
-			}
-
-			// Não deve quebrar
-			expect(result.current.shapes).toHaveLength(0);
-		});
 	});
 
 	describe("cleanup", () => {
 		it("should cleanup Yjs observers on unmount", () => {
-			const { unmount } = renderHook(() => useYjsShapes("test-room"));
+			const { unmount } = renderHook(() => useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate
+				}));
 
 			// Não deve dar erro ao desmontar
 			expect(() => unmount()).not.toThrow();

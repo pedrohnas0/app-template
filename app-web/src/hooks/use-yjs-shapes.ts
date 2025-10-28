@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import * as Y from "yjs";
-import { usePartyKit } from "./use-partykit";
 
 /**
  * Hook para gerenciar shapes colaborativas usando Yjs CRDT
@@ -68,6 +67,23 @@ export type Shape = RectShape | CircleShape | TextShape | LineShape;
 export type ShapeWithoutId = Omit<Shape, "id">;
 
 /**
+ * Opções para configurar o hook useYjsShapes (Nova API - Plan 02)
+ */
+export type UseYjsShapesOptions = {
+	/**
+	 * Função para enviar updates Yjs para o servidor
+	 * (Deve vir de usePartyKit externo)
+	 */
+	send: (data: unknown) => void;
+
+	/**
+	 * Callback para registrar handler de Yjs updates remotos
+	 * Retorna função de cleanup
+	 */
+	onYjsUpdate?: (handler: (update: Uint8Array) => void) => () => void;
+};
+
+/**
  * Retorno do hook useYjsShapes
  */
 export type UseYjsShapesReturn = {
@@ -97,37 +113,50 @@ export type UseYjsShapesReturn = {
 /**
  * Hook customizado para gerenciar shapes colaborativas com Yjs
  *
- * @param room - ID da room do PartyKit para sincronização
+ * ⚠️ NOVA API (Plan 02): Não cria conexão PartyKit interna
+ *
+ * Este hook gerencia APENAS a lógica Yjs (CRDT). A conexão WebSocket
+ * deve ser gerenciada externamente para unificar com outras mensagens
+ * (como cursores).
+ *
+ * @param options - Configurações do hook
+ * @param options.send - Função para enviar Yjs updates (de usePartyKit)
+ * @param options.onYjsUpdate - Callback para registrar handler de updates remotos
  * @returns Objeto contendo shapes e funções CRUD
  *
  * @example
  * ```tsx
- * const { shapes, addShape, updateShape, deleteShape } = useYjsShapes("canvas-123");
- *
- * // Adicionar shape
- * addShape({
- *   type: "rect",
- *   x: 100,
- *   y: 100,
- *   width: 50,
- *   height: 50,
- *   fill: "#ff0000"
+ * // 1. Criar conexão PartyKit única
+ * const { send } = usePartyKit({
+ *   room: "canvas-123",
+ *   onMessage: (data) => {
+ *     if (data instanceof ArrayBuffer) {
+ *       // Processar Yjs update
+ *     } else {
+ *       // Processar cursor/outro
+ *     }
+ *   }
  * });
  *
- * // Atualizar shape
- * updateShape(shapeId, { x: 150, y: 150 });
- *
- * // Deletar shape
- * deleteShape(shapeId);
+ * // 2. Usar hook com conexão externa
+ * const { shapes, addShape } = useYjsShapes({
+ *   send,
+ *   onYjsUpdate: (handler) => {
+ *     // Registrar handler que receberá ArrayBuffer
+ *     return () => {}; // cleanup function
+ *   }
+ * });
  * ```
  *
  * @remarks
  * - Usa Yjs CRDT para garantir convergência eventual
- * - Sincroniza automaticamente através do PartyKit
+ * - Requer conexão PartyKit EXTERNA (previne múltiplas conexões)
  * - Mudanças locais e remotas são aplicadas sem conflitos
  * - Cleanup automático ao desmontar
  */
-export function useYjsShapes(room: string): UseYjsShapesReturn {
+export function useYjsShapes(options: UseYjsShapesOptions): UseYjsShapesReturn {
+	const { send, onYjsUpdate } = options;
+
 	// Estado React das shapes
 	const [shapes, setShapes] = useState<Shape[]>([]);
 
@@ -136,18 +165,6 @@ export function useYjsShapes(room: string): UseYjsShapesReturn {
 
 	// Obter Y.Array de shapes do documento
 	const shapesArray = doc.getArray<Shape>("shapes");
-
-	// Conectar ao PartyKit para sincronização
-	const { send } = usePartyKit({
-		room,
-		onMessage: (data) => {
-			// Aplicar updates remotos do Yjs
-			if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-				Y.applyUpdate(doc, new Uint8Array(data));
-			}
-			// Ignorar mensagens que não são Yjs updates (ex: cursores)
-		},
-	});
 
 	// Observer para mudanças no Yjs array
 	useEffect(() => {
@@ -168,10 +185,11 @@ export function useYjsShapes(room: string): UseYjsShapesReturn {
 		};
 	}, [shapesArray]);
 
-	// Observer para enviar updates locais ao PartyKit
+	// Observer para enviar updates locais
 	useEffect(() => {
 		const updateHandler = (update: Uint8Array) => {
-			// Enviar update para outros clientes via PartyKit
+			// Enviar update para servidor via send externo
+			console.log("📤 [YJS] Enviando update local:", update.length, "bytes");
 			send(update);
 		};
 
@@ -183,6 +201,24 @@ export function useYjsShapes(room: string): UseYjsShapesReturn {
 			doc.off("update", updateHandler);
 		};
 	}, [doc, send]);
+
+	// Registrar handler para updates REMOTOS via callback
+	useEffect(() => {
+		if (!onYjsUpdate) return;
+
+		// Handler que aplica updates remotos ao doc local
+		const remoteUpdateHandler = (update: Uint8Array) => {
+			console.log("📥 [YJS] Recebeu update remoto:", update.length, "bytes");
+			Y.applyUpdate(doc, update);
+			console.log("✅ [YJS] Update remoto aplicado");
+		};
+
+		// Registrar via callback (retorna cleanup)
+		const cleanup = onYjsUpdate(remoteUpdateHandler);
+
+		// Cleanup: desregistrar handler
+		return cleanup;
+	}, [doc, onYjsUpdate]);
 
 	/**
 	 * Adiciona uma nova shape ao array Yjs
