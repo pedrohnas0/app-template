@@ -1,163 +1,107 @@
-# Guia de Desenvolvimento Claude - Regras e Boas Práticas
+# Claude Code - Guia do Projeto
 
-Este documento contém regras e boas práticas para evitar erros comuns durante o desenvolvimento.
+## 📋 Visão Geral
 
-## 🔴 Erros Comuns de Tipagem
+**Stack:** T3 Stack (Next.js 15 + tRPC + Prisma + TypeScript)
+**Monorepo:** `app-web` (Next.js) + `app-realtime` (PartyKit)
+**DB:** Supabase PostgreSQL
+**Real-time:** PartyKit (WebSocket + Yjs CRDT)
+**Deploy:** Vercel + Cloudflare Workers
 
-### 1. Campos JSON do Prisma
-
-**Problema:** Prisma usa tipos específicos para campos JSON que não são compatíveis diretamente com `Record<string, unknown>`.
-
-**Erro:**
-```typescript
-// ❌ ERRADO - Causa erro de tipagem no build
-return ctx.db.shape.create({
-  data: input, // input.data é Record<string, unknown>
-});
+### Estrutura
+```
+app-template/
+├── app-web/          # Next.js app
+│   ├── src/
+│   │   ├── app/      # Pages (App Router)
+│   │   ├── server/   # tRPC API
+│   │   ├── components/ # React components
+│   │   └── hooks/    # Custom hooks
+│   ├── tests/        # Vitest + Playwright
+│   └── prisma/       # DB schema
+└── app-realtime/     # PartyKit WebSocket
+    └── partykit/
+        └── src/      # Canvas Party server
 ```
 
-**Solução:**
-```typescript
-// ✅ CORRETO - Cast explícito para any no campo JSON
-return ctx.db.shape.create({
-  data: {
-    ...input,
-    data: input.data as any, // Prisma Json type workaround
-  },
-});
+### Features Implementadas
+- ✅ Canvas colaborativo (`/collaborative-canvas`)
+- ✅ Cursores em tempo real (PartyKit)
+- ✅ React Flow (zoom, pan, controls)
+- ✅ API tRPC (Canvas + Shape routers)
+- ✅ Testes: 169 unitários passando (140 web + 29 PartyKit)
+
+## ⚠️ Erros Comuns
+
+### Prisma JSON Fields
+Campos `Json` precisam cast para `any`:
+```ts
+// ❌ Erro: ctx.db.shape.create({ data: input })
+// ✅ Correto:
+ctx.db.shape.create({
+  data: { ...input, data: input.data as any }
+})
 ```
 
-**Quando aplicar:**
-- Sempre que usar campos `Json` do Prisma em create/update
-- Ao fazer destructuring, separar o campo `data` dos demais
-
-**Exemplo completo:**
-```typescript
-// Create
-create: publicProcedure
-  .input(shapeCreateSchema)
-  .mutation(async ({ ctx, input }) => {
-    return ctx.db.shape.create({
-      data: {
-        ...input,
-        data: input.data as any, // Prisma Json type workaround
-      },
-    });
-  }),
-
-// Update
-update: publicProcedure
-  .input(shapeUpdateSchema)
-  .mutation(async ({ ctx, input }) => {
-    const { id, data: shapeData, ...restData } = input;
-
-    return ctx.db.shape.update({
-      where: { id },
-      data: {
-        ...restData,
-        ...(shapeData && { data: shapeData as any }), // Prisma Json type workaround
-      },
-    });
-  }),
+### process.env.NODE_ENV
+Read-only - nunca atribuir. Use mocks em testes:
+```ts
+vi.mock("~/env", () => ({ env: { NODE_ENV: "test" } }))
 ```
 
-### 2. process.env.NODE_ENV é Read-Only
+## 🧪 Metodologia TDD
 
-**Problema:** Tentar atribuir valor a `process.env.NODE_ENV` causa erro de compilação.
+**Ciclo:** RED → GREEN → REFACTOR (não pular etapas)
+**Status:** Parcialmente seguido (PartyKit 100% TDD, routers sem testes)
 
-**Erro:**
-```typescript
-// ❌ ERRADO - Cannot assign to read-only property
-process.env.NODE_ENV = "test";
-```
+## ✅ Checklist Pré-Commit
 
-**Solução:**
-```typescript
-// ✅ CORRETO - Remover a atribuição
-// O NODE_ENV já é setado pelo runtime/framework
-
-// Se precisar mockar para testes:
-vi.mock("~/env", () => ({
-  env: {
-    NODE_ENV: "test",
-    // ... outros env vars
-  },
-}));
-```
-
-**Quando aplicar:**
-- Nunca tentar modificar `process.env.NODE_ENV` diretamente
-- Usar mocks do Vitest para simular valores de env em testes
-
-## 🧪 TDD - Regras do Ciclo RED-GREEN-REFACTOR
-
-### Sempre seguir a ordem:
-
-1. **RED** - Escrever testes que falham
-2. **GREEN** - Implementar código mínimo para passar
-3. **REFACTOR** - Melhorar código mantendo testes verdes
-
-### Nunca pular etapas:
-- ❌ Não implementar antes de ter testes
-- ❌ Não refatorar se testes não passam
-- ❌ Não fazer commit se testes falham
-
-## 📝 Checklist Antes de Commit
-
-- [ ] `npm run build` passa sem erros
-- [ ] `npm run test:unit` - todos os testes passam
-- [ ] `npm run check` - lint passa (se aplicável)
-- [ ] Campos JSON do Prisma usam cast `as any`
-- [ ] Nenhuma atribuição a `process.env.NODE_ENV`
-- [ ] Todos os TODOs da fase estão completos
-
-## 🚀 Build e CI/CD
-
-### Antes de Push:
 ```bash
-# 1. Rodar build localmente
 cd app-web
-npm run build
-
-# 2. Rodar testes
-npm run test:unit
-
-# 3. Verificar lint
-npm run check
+npm run build      # TypeScript OK?
+npm run test:unit  # Testes passando?
+npm run check      # Lint OK?
 ```
 
-### Se o build falhar no CI/CD:
-1. Verificar logs do GitHub Actions
-2. Reproduzir erro localmente com `npm run build`
-3. Corrigir erros de tipagem comuns (ver seção acima)
-4. Rodar testes novamente
-5. Push após confirmar que tudo passa
+## 🏗️ Arquitetura
 
-## 🎯 Convenções de Código
+### Comunicação
+- **Frontend ↔ tRPC API:** REST-like com type-safety
+- **Frontend ↔ PartyKit:** WebSocket (cursores em tempo real)
+- **PartyKit ↔ Yjs:** CRDT para shapes colaborativas (não integrado com persistência ainda)
 
-### TypeScript
-- Sempre tipar explicitamente parâmetros de função
-- Usar `as any` apenas para workarounds documentados (ex: Prisma JSON)
-- Preferir interfaces sobre types para objetos complexos
+### Routers tRPC
+- `canvas`: CRUD de canvas (sem testes)
+- `shape`: CRUD de shapes (sem testes)
+- `post`: Exemplo T3 Stack
 
-### Prisma
-- Campos JSON precisam de cast para `any` em mutations
-- Sempre incluir comentário: `// Prisma Json type workaround`
-- Usar destructuring para separar campos JSON dos demais
+### Componentes Chave
+- `CollaborativeCursors`: Cursores colaborativos (140 testes)
+- `CanvasControls`: Zoom in/out/fit (React Flow)
+- `usePartyKit`: Hook WebSocket (sem testes)
+- `useYjsShapes`: Hook CRDT (sem testes)
 
-### Tests
-- Um arquivo de teste por router/module
-- Agrupar testes relacionados com `describe`
-- Usar `beforeEach` para setup e cleanup
-- Nomear testes de forma descritiva: "should ..."
+## 🚫 Gaps Conhecidos
 
-## 📚 Referências
+- ❌ Testes E2E não escritos (Playwright configurado)
+- ❌ Testes de API (routers canvas/shape)
+- ❌ Testes de hooks (usePartyKit, useYjsShapes)
+- ❌ FASE 4 não implementada (persistência save/load)
+- ❌ Integração Yjs ↔ Postgres
 
-- [Prisma JSON Fields](https://www.prisma.io/docs/concepts/components/prisma-schema/data-model#json)
-- [Vitest Best Practices](https://vitest.dev/guide/best-practices.html)
-- [tRPC Error Handling](https://trpc.io/docs/server/error-handling)
+## 📦 Convenções
+
+**TypeScript:** Tipos explícitos, `as any` só com comentário
+**Prisma:** Campos JSON precisam cast (`as any`)
+**Testes:** `describe` + `it("should...")` + `beforeEach`
+**Git:** Commits semânticos (`feat:`, `fix:`, `refactor:`)
+
+## 🔗 Links Úteis
+
+- **Prod:** https://app-template-tan.vercel.app/collaborative-canvas
+- **PartyKit:** https://app-template-realtime.pedrohnas0.partykit.dev
+- **Plano:** `/plans/plan-01.md`
 
 ---
 
-**Última atualização:** 2025-10-27
-**Versão:** 1.0
+**Versão:** 2.0 | **Última atualização:** 2025-10-27
