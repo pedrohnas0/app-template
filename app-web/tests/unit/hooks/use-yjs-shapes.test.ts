@@ -411,6 +411,105 @@ describe("useYjsShapes", () => {
 
 	});
 
+	describe("TextShape with dimensions", () => {
+		it("should create TextShape with width and height", async () => {
+			const { result } = renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			const textShape = {
+				type: "text" as const,
+				x: 100,
+				y: 200,
+				text: "Hello World",
+				fill: "#000000",
+				fontSize: 16,
+				width: 200,
+				height: 60,
+			};
+
+			result.current.addShape(textShape);
+
+			await waitFor(() => {
+				expect(result.current.shapes).toHaveLength(1);
+				expect(result.current.shapes[0]).toMatchObject({
+					type: "text",
+					width: 200,
+					height: 60,
+				});
+			});
+		});
+
+		it("should update TextShape dimensions", async () => {
+			const { result } = renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// Criar TextShape com dimensões iniciais
+			result.current.addShape({
+				type: "text",
+				x: 0,
+				y: 0,
+				text: "Test",
+				fill: "#000000",
+				width: 100,
+				height: 40,
+			} as any);
+
+			await waitFor(() => {
+				expect(result.current.shapes).toHaveLength(1);
+			});
+
+			const shapeId = result.current.shapes[0]?.id;
+
+			// Atualizar dimensões
+			result.current.updateShape(shapeId!, {
+				width: 300,
+				height: 100,
+			} as any);
+
+			await waitFor(() => {
+				const updated = result.current.shapes[0];
+				// Type narrowing: verificar que é TextShape
+				if (updated?.type === "text") {
+					expect(updated.width).toBe(300);
+					expect(updated.height).toBe(100);
+				}
+			});
+		});
+
+		it("should allow TextShape without dimensions (optional)", async () => {
+			const { result } = renderHook(() =>
+				useYjsShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// TextShape sem width/height (devem ser opcionais)
+			const textShape = {
+				type: "text" as const,
+				x: 50,
+				y: 50,
+				text: "No dimensions",
+				fill: "#ff0000",
+			};
+
+			result.current.addShape(textShape as any);
+
+			await waitFor(() => {
+				expect(result.current.shapes).toHaveLength(1);
+				expect(result.current.shapes[0]?.type).toBe("text");
+			});
+		});
+	});
+
 	describe("cleanup", () => {
 		it("should cleanup Yjs observers on unmount", () => {
 			const { unmount } = renderHook(() => useYjsShapes({

@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { usePartyKit } from "~/hooks/use-partykit";
 import { useReactFlowShapes } from "~/hooks/use-reactflow-shapes";
 import type { Node } from "@xyflow/react";
+import { GRID_SIZE } from "~/lib/constants";
+import { snapToGrid } from "~/lib/utils";
 import "@xyflow/react/dist/style.css";
 
 /**
@@ -216,10 +218,13 @@ function CollaborativeCanvasInner() {
 			if (!selectedTool) return;
 
 			// Converter posição do clique para coordenadas do canvas (considerando zoom/pan)
-			const flowPosition = reactFlowInstance.screenToFlowPosition({
+			const rawPosition = reactFlowInstance.screenToFlowPosition({
 				x: event.clientX,
 				y: event.clientY,
 			});
+
+			// Snap manual: Arredondar para múltiplos de GRID_SIZE
+			const flowPosition = snapToGrid(rawPosition.x, rawPosition.y, GRID_SIZE);
 
 			// Criar shape baseado na ferramenta selecionada
 			switch (selectedTool) {
@@ -351,14 +356,17 @@ function CollaborativeCanvasInner() {
 				nodeTypes={nodeTypes}
 				onNodesChange={onNodesChange}
 				onPaneClick={handlePaneClick}
+				snapToGrid={true}
+				snapGrid={[GRID_SIZE, GRID_SIZE]}
 				fitView
 				proOptions={{ hideAttribution: true }}
 				className="[&_.react-flow__background]:opacity-30"
 			>
 				<Background
 					variant={BackgroundVariant.Dots}
-					gap={16}
+					gap={GRID_SIZE}
 					size={1}
+					offset={[-10, -10]}
 					className="opacity-30"
 				/>
 				<Panel

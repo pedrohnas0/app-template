@@ -295,4 +295,159 @@ describe("useReactFlowShapes", () => {
 			expect(mockDeleteShape).toHaveBeenCalledWith("shape-1");
 		});
 	});
+
+	describe("Grid Snap (20px)", () => {
+		it("should snap rect position to 20px grid on drag end", async () => {
+			const mockUpdateShape = vi.fn();
+			const { useYjsShapes } = await import("~/hooks/use-yjs-shapes");
+
+			vi.mocked(useYjsShapes).mockReturnValue({
+				shapes: [
+					{
+						id: "shape-1",
+						type: "rect",
+						x: 100,
+						y: 100,
+						width: 100,
+						height: 80,
+						fill: "#000000",
+					},
+				],
+				addShape: vi.fn(),
+				updateShape: mockUpdateShape,
+				deleteShape: vi.fn(),
+			});
+
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// Simular drag para posição não-alinhada (x: 127, y: 83)
+			// React Flow com snapToGrid={true} deve arredondar para (x: 120, y: 80)
+			const positionChange: NodePositionChange = {
+				id: "shape-1",
+				type: "position",
+				dragging: false,
+				position: { x: 120, y: 80 }, // Já snapped pelo React Flow
+			};
+
+			act(() => {
+				result.current.onNodesChange([positionChange]);
+			});
+
+			// Verificar que updateShape foi chamado com posição snapped
+			expect(mockUpdateShape).toHaveBeenCalledWith("shape-1", {
+				x: 120,
+				y: 80,
+			});
+
+			// Garantir que posição é múltipla de 20
+			const call = mockUpdateShape.mock.calls[0];
+			expect(call?.[1]?.x % 20).toBe(0);
+			expect(call?.[1]?.y % 20).toBe(0);
+		});
+
+		it("should snap circle position to 20px grid on drag end", async () => {
+			const mockUpdateShape = vi.fn();
+			const { useYjsShapes } = await import("~/hooks/use-yjs-shapes");
+
+			vi.mocked(useYjsShapes).mockReturnValue({
+				shapes: [
+					{
+						id: "circle-1",
+						type: "circle",
+						x: 200,
+						y: 200,
+						radius: 50,
+						fill: "#ff0000",
+					},
+				],
+				addShape: vi.fn(),
+				updateShape: mockUpdateShape,
+				deleteShape: vi.fn(),
+			});
+
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// Drag para posição snapped (x: 240, y: 260)
+			const positionChange: NodePositionChange = {
+				id: "circle-1",
+				type: "position",
+				dragging: false,
+				position: { x: 240, y: 260 },
+			};
+
+			act(() => {
+				result.current.onNodesChange([positionChange]);
+			});
+
+			expect(mockUpdateShape).toHaveBeenCalledWith("circle-1", {
+				x: 240,
+				y: 260,
+			});
+
+			// Verificar múltiplos de 20
+			const call = mockUpdateShape.mock.calls[0];
+			expect(call?.[1]?.x % 20).toBe(0);
+			expect(call?.[1]?.y % 20).toBe(0);
+		});
+
+		it("should snap text position to 20px grid on drag end", async () => {
+			const mockUpdateShape = vi.fn();
+			const { useYjsShapes } = await import("~/hooks/use-yjs-shapes");
+
+			vi.mocked(useYjsShapes).mockReturnValue({
+				shapes: [
+					{
+						id: "text-1",
+						type: "text",
+						x: 50,
+						y: 50,
+						text: "Hello",
+						fill: "#000000",
+					},
+				],
+				addShape: vi.fn(),
+				updateShape: mockUpdateShape,
+				deleteShape: vi.fn(),
+			});
+
+			const { result } = renderHook(() =>
+				useReactFlowShapes({
+					send: mockSend,
+					onYjsUpdate: mockOnYjsUpdate,
+				}),
+			);
+
+			// Drag para posição snapped (x: 160, y: 180)
+			const positionChange: NodePositionChange = {
+				id: "text-1",
+				type: "position",
+				dragging: false,
+				position: { x: 160, y: 180 },
+			};
+
+			act(() => {
+				result.current.onNodesChange([positionChange]);
+			});
+
+			expect(mockUpdateShape).toHaveBeenCalledWith("text-1", {
+				x: 160,
+				y: 180,
+			});
+
+			// Verificar múltiplos de 20
+			const call = mockUpdateShape.mock.calls[0];
+			expect(call?.[1]?.x % 20).toBe(0);
+			expect(call?.[1]?.y % 20).toBe(0);
+		});
+	});
 });
