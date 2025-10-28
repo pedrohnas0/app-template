@@ -1,22 +1,23 @@
 "use client";
 
+import {
+	Background,
+	BackgroundVariant,
+	type Edge,
+	type Node,
+	Panel,
+	ReactFlow,
+} from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarStack } from "~/components/kibo-ui/avatar-stack";
-import { CanvasRoot } from "~/components/kibo-ui/canvas-root";
-import { CanvasToolbar, type ToolType } from "~/components/kibo-ui/canvas-toolbar";
+import { CanvasControls } from "~/components/kibo-ui/canvas-controls";
 import {
 	CollaborativeCursors,
 	type CollaborativeUser,
 } from "~/components/kibo-ui/collaborative-cursors";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { usePartyKit } from "~/hooks/use-partykit";
-import {
-	useYjsShapes,
-	type CircleShape,
-	type LineShape,
-	type RectShape,
-	type TextShape,
-} from "~/hooks/use-yjs-shapes";
+import "@xyflow/react/dist/style.css";
 
 /**
  * Cores disponíveis para usuários (cicla)
@@ -42,8 +43,8 @@ const currentUser = {
  * Página de Canvas Colaborativo
  *
  * Demonstra colaboração em tempo real usando:
- * - PartyKit (WebSocket + Yjs CRDT)
- * - Shapes colaborativas sincronizadas
+ * - PartyKit (WebSocket)
+ * - React Flow para canvas
  * - Cursores em tempo real
  * - Design shadcn/ui com glass morphism
  *
@@ -51,22 +52,21 @@ const currentUser = {
  * Para testar colaboração:
  * 1. Abra esta página em 2+ navegadores
  * 2. Mova o mouse - verá cursores dos outros
- * 3. Adicione shapes - verá sincronização automática
  */
 export default function CollaborativeCanvasPage() {
 	// Room ID (pode vir da URL no futuro)
 	const roomId = "demo-canvas";
 
 	// Estado local
-	const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
 	const [myPosition, setMyPosition] = useState({ x: 50, y: 50 });
 	const [otherUsers, setOtherUsers] = useState<CollaborativeUser[]>([]);
-	const containerRef = useRef<HTMLDivElement>(null);
+	const [nodes] = useState<Node[]>([]);
+	const [edges] = useState<Edge[]>([]);
+	const containerRef = useRef<HTMLElement>(null);
 	const rafRef = useRef<number | null>(null);
 	const lastSendTimeRef = useRef<number>(0);
 
-	// Hooks colaborativos
-	const { shapes, addShape } = useYjsShapes(roomId);
+	// Hook PartyKit
 	const { send, isConnected } = usePartyKit({
 		room: roomId,
 		onMessage: (data: any) => {
@@ -170,64 +170,6 @@ export default function CollaborativeCanvasPage() {
 		};
 	}, [handlePointerMove, handleContextMenu]);
 
-	// Handler de click no canvas para adicionar shapes
-	const handleCanvasClick = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
-			if (!selectedTool || !containerRef.current) return;
-
-			const bounds = containerRef.current.getBoundingClientRect();
-			const x = e.clientX - bounds.left;
-			const y = e.clientY - bounds.top;
-
-			// Adicionar shape baseado na ferramenta selecionada
-			switch (selectedTool) {
-				case "rect":
-					addShape({
-						type: "rect",
-						x,
-						y,
-						width: 100,
-						height: 100,
-						fill: "#3b82f6",
-					} as Omit<RectShape, "id">);
-					break;
-				case "circle":
-					addShape({
-						type: "circle",
-						x,
-						y,
-						radius: 50,
-						fill: "#10b981",
-					} as Omit<CircleShape, "id">);
-					break;
-				case "text":
-					addShape({
-						type: "text",
-						x,
-						y,
-						text: "Text",
-						fill: "#000000",
-						fontSize: 16,
-					} as Omit<TextShape, "id">);
-					break;
-				case "line":
-					addShape({
-						type: "line",
-						x,
-						y,
-						x2: x + 100,
-						y2: y + 100,
-						stroke: "#ef4444",
-						strokeWidth: 2,
-					} as Omit<LineShape, "id">);
-					break;
-			}
-
-			// Deselect tool after adding
-			setSelectedTool(null);
-		},
-		[selectedTool, addShape],
-	);
 
 	// Todos os usuários (eu + outros)
 	const allUsers: CollaborativeUser[] = [
@@ -245,8 +187,30 @@ export default function CollaborativeCanvasPage() {
 	return (
 		<main
 			ref={containerRef}
-			className="relative h-screen w-screen cursor-none select-none overflow-hidden bg-gradient-to-br from-background via-background to-muted/20"
+			className="relative h-screen w-screen cursor-none select-none overflow-hidden bg-background"
 		>
+			{/* React Flow Canvas */}
+			<ReactFlow
+				nodes={nodes}
+				edges={edges}
+				fitView
+				proOptions={{ hideAttribution: true }}
+				className="[&_.react-flow__background]:opacity-30"
+			>
+				<Background
+					variant={BackgroundVariant.Dots}
+					gap={16}
+					size={1}
+					className="opacity-30"
+				/>
+				<Panel
+					position="bottom-left"
+					className="pointer-events-auto cursor-auto"
+				>
+					<CanvasControls />
+				</Panel>
+			</ReactFlow>
+
 			{/* Header */}
 			<div className="pointer-events-auto absolute top-8 left-8 z-10 cursor-auto">
 				<div className="rounded-lg border border-border bg-background/80 p-6 shadow-lg backdrop-blur-sm">
@@ -263,9 +227,6 @@ export default function CollaborativeCanvasPage() {
 							"Connecting..."
 						)}
 					</p>
-					<p className="mt-1 text-muted-foreground text-xs">
-						{shapes.length} shape{shapes.length !== 1 ? "s" : ""} on canvas
-					</p>
 				</div>
 			</div>
 
@@ -281,19 +242,6 @@ export default function CollaborativeCanvasPage() {
 						))}
 					</AvatarStack>
 				</div>
-			</div>
-
-			{/* Toolbar */}
-			<div className="pointer-events-auto absolute bottom-8 left-8 z-10 cursor-auto">
-				<CanvasToolbar
-					selectedTool={selectedTool ?? undefined}
-					onToolSelect={(tool) => setSelectedTool(tool)}
-				/>
-			</div>
-
-			{/* Canvas com Shapes */}
-			<div onClick={handleCanvasClick}>
-				<CanvasRoot room={roomId} showBackground={true} />
 			</div>
 
 			{/* Cursores Colaborativos */}
