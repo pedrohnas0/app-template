@@ -264,7 +264,7 @@ describe("useReactFlowShapes", () => {
 					width: 100,
 					height: 100,
 					fill: "#ff0000",
-				});
+				} as any);
 			});
 
 			expect(mockAddShape).toHaveBeenCalled();

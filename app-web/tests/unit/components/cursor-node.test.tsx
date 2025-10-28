@@ -44,7 +44,7 @@ describe("CursorNode", () => {
 		isCurrentUser: false,
 	};
 
-	const createNodeProps = (data: CursorData = mockData): NodeProps<CursorData> => ({
+	const createNodeProps = (data: CursorData = mockData): any => ({
 		id: `cursor-${data.id}`,
 		type: "cursorNode",
 		data,
@@ -52,8 +52,6 @@ describe("CursorNode", () => {
 		isConnectable: false,
 		zIndex: 9999,
 		dragging: false,
-		xPos: 100,
-		yPos: 200,
 		positionAbsoluteX: 100,
 		positionAbsoluteY: 200,
 	});

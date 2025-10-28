@@ -16,7 +16,7 @@ describe("ShapeNode", () => {
 	const createNodeProps = (
 		shape: ShapeNodeData["shape"],
 		selected = false,
-	): NodeProps<ShapeNodeData> => ({
+	): any => ({
 		id: "test-node",
 		data: { shape },
 		selected,
@@ -25,8 +25,6 @@ describe("ShapeNode", () => {
 		dragging: false,
 		isConnectable: true,
 		zIndex: 0,
-		xPos: 0,
-		yPos: 0,
 	});
 
 	describe("Rectangle Shape", () => {
