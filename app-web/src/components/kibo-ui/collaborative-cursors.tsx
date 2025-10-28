@@ -29,6 +29,9 @@ export type CollaborativeUser = {
 	/** Posição Y (pixels absolutos) */
 	y: number;
 
+	/** Cor do cursor */
+	color?: "blue" | "emerald" | "rose" | "violet";
+
 	/** Mensagem opcional */
 	message?: string;
 
