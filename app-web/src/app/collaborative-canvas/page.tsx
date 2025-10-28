@@ -14,16 +14,11 @@ import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { AvatarStack } from "~/components/kibo-ui/avatar-stack";
 import { CanvasControls } from "~/components/kibo-ui/canvas-controls";
 import { CanvasToolbar, type ToolType } from "~/components/kibo-ui/canvas-toolbar";
-import {
-	CollaborativeCursors,
-	type CollaborativeUser,
-} from "~/components/kibo-ui/collaborative-cursors";
 import { ShapeNode } from "~/components/kibo-ui/shape-node";
 import { CursorNode, type CursorData } from "~/components/kibo-ui/cursor-node";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { usePartyKit } from "~/hooks/use-partykit";
 import { useReactFlowShapes } from "~/hooks/use-reactflow-shapes";
-import { FEATURES } from "~/lib/feature-flags";
 import type { Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -36,6 +31,19 @@ const userColors = ["blue", "emerald", "rose", "violet"] as const;
  * Tipo de cor do usuário
  */
 type UserColor = (typeof userColors)[number];
+
+/**
+ * Tipo para outros usuários (apenas dados de cursor)
+ */
+type OtherUser = {
+	id: string;
+	name: string;
+	avatar: string;
+	x: number;
+	y: number;
+	color: UserColor;
+	message?: string;
+};
 
 /**
  * Usuário mock para demo (será substituído por auth real)
@@ -57,7 +65,7 @@ function CollaborativeCanvasInner() {
 	// Estado local
 	const [currentUser] = useState(getCurrentUser);
 	const [myPosition, setMyPosition] = useState({ x: 50, y: 50 });
-	const [otherUsers, setOtherUsers] = useState<CollaborativeUser[]>([]);
+	const [otherUsers, setOtherUsers] = useState<OtherUser[]>([]);
 	const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
 	const [edges] = useState<Edge[]>([]);
 	const containerRef = useRef<HTMLElement>(null);
@@ -73,7 +81,7 @@ function CollaborativeCanvasInner() {
 	const nodeTypes = useMemo(
 		() => ({
 			shapeNode: ShapeNode,
-			...(FEATURES.USE_CURSOR_NODES && { cursorNode: CursorNode }),
+			cursorNode: CursorNode,
 		}),
 		[],
 	);
@@ -284,12 +292,9 @@ function CollaborativeCanvasInner() {
 	}, [handlePointerMove, handleContextMenu]);
 
 
-	// ===== NOVA IMPLEMENTAÇÃO (com feature flag) =====
 	// Cursor Nodes: Renderiza cursores DENTRO do React Flow
 	const cursorNodes = useMemo<Node<CursorData>[]>(() => {
-		if (!FEATURES.USE_CURSOR_NODES) return [];
-
-		// ✅ FIX: Só renderizar cursores de OUTROS usuários
+		// ✅ Só renderizar cursores de OUTROS usuários
 		// Não incluir próprio cursor (browser já mostra + evita re-render ao mover mouse)
 		return otherUsers.map((user) => ({
 			id: `cursor-${user.id}`,
@@ -318,55 +323,21 @@ function CollaborativeCanvasInner() {
 		}));
 	}, [otherUsers]); // ✅ Só depende de otherUsers (não myPosition!)
 
-	// ===== IMPLEMENTAÇÃO ANTIGA (ainda funcional) =====
-	// Converte coordenadas apenas se NÃO usar cursor nodes
-	const allUsersForOverlay = useMemo<CollaborativeUser[]>(() => {
-		if (FEATURES.USE_CURSOR_NODES) return [];
-
-		const myScreenPosition = reactFlowInstance.flowToScreenPosition({
-			x: myPosition.x,
-			y: myPosition.y,
-		});
-
-		return [
+	// Lista de usuários para Avatar Stack
+	const allUsers = useMemo(
+		() => [
 			{
 				id: currentUser.id,
 				name: currentUser.name,
 				avatar: currentUser.avatar,
-				x: myScreenPosition.x,
-				y: myScreenPosition.y,
+				x: 0,
+				y: 0,
 				isCurrentUser: true,
 			},
-			...otherUsers.map((user) => {
-				// Converter posição de cada usuário de flow → screen
-				const screenPos = reactFlowInstance.flowToScreenPosition({
-					x: user.x,
-					y: user.y,
-				});
-				return {
-					...user,
-					x: screenPos.x,
-					y: screenPos.y,
-				};
-			}),
-		];
-	}, [myPosition, otherUsers, currentUser, reactFlowInstance]);
-
-	// Para uso no Avatar Stack (sempre screen space)
-	const allUsers: CollaborativeUser[] = FEATURES.USE_CURSOR_NODES
-		? // Se usar nodes, precisa converter para avatar stack
-			[
-				{
-					id: currentUser.id,
-					name: currentUser.name,
-					avatar: currentUser.avatar,
-					x: 0,
-					y: 0,
-					isCurrentUser: true,
-				},
-				...otherUsers,
-			]
-		: allUsersForOverlay;
+			...otherUsers,
+		],
+		[currentUser, otherUsers],
+	);
 
 	return (
 		<main
@@ -375,11 +346,7 @@ function CollaborativeCanvasInner() {
 		>
 			{/* React Flow Canvas */}
 			<ReactFlow
-				nodes={
-					FEATURES.USE_CURSOR_NODES
-						? [...nodes, ...cursorNodes] // ✨ NOVO: Cursores dentro
-						: nodes // Antigo: Só shapes
-				}
+				nodes={[...nodes, ...cursorNodes]}
 				edges={edges}
 				nodeTypes={nodeTypes}
 				onNodesChange={onNodesChange}
@@ -443,11 +410,6 @@ function CollaborativeCanvasInner() {
 					</AvatarStack>
 				</div>
 			</div>
-
-			{/* Cursores Colaborativos - Renderização Condicional */}
-			{!FEATURES.USE_CURSOR_NODES && (
-				<CollaborativeCursors users={allUsersForOverlay} />
-			)}
 		</main>
 	);
 }
