@@ -178,14 +178,20 @@ describe.sequential("canvas router", () => {
 		});
 
 		it("should limit results to 50 canvases", async () => {
-			// Setup: criar 60 canvas
-			const promises = Array.from({ length: 60 }, (_, i) =>
-				db.canvas.create({
-					data: { name: `Canvas ${i}` },
-				}),
-			);
+			// Setup: criar 60 canvas em lotes para evitar esgotar o connection pool
+			const batchSize = 5; // Respeita o limite de 5 conexões do Prisma
+			const totalCanvases = 60;
 
-			await Promise.all(promises);
+			for (let i = 0; i < totalCanvases; i += batchSize) {
+				const batch = Array.from(
+					{ length: Math.min(batchSize, totalCanvases - i) },
+					(_, j) =>
+						db.canvas.create({
+							data: { name: `Canvas ${i + j}` },
+						}),
+				);
+				await Promise.all(batch);
+			}
 
 			// Test
 			const caller = createCaller();
