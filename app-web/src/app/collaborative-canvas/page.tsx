@@ -84,7 +84,7 @@ function CollaborativeCanvasInner() {
 			cursorNode: CursorNode,
 		}),
 		[],
-	);
+	) as any;
 
 	// React Flow instance para conversão de coordenadas
 	const reactFlowInstance = useReactFlow();

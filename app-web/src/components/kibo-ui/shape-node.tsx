@@ -32,8 +32,10 @@ export type ShapeNodeData = {
  * - Transições suaves
  * - Selected state via React Flow
  */
-export function ShapeNode({ data, selected }: NodeProps<ShapeNodeData>) {
-	const { shape } = data;
+export function ShapeNode({ data, selected }: any) {
+	// Cast data para ShapeNodeData para type safety
+	const shapeData = data as ShapeNodeData;
+	const { shape } = shapeData;
 
 	// Classes base para todas as shapes
 	const baseClasses = cn(

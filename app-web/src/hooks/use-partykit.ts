@@ -196,7 +196,8 @@ export function usePartyKit({
 
 		// Se for ArrayBuffer ou Uint8Array, enviar direto (Yjs sync)
 		if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-			console.log("📡 [PARTYKIT] Enviando ArrayBuffer/Uint8Array:", data.byteLength || data.length, "bytes");
+			const size = data instanceof ArrayBuffer ? data.byteLength : data.length;
+			console.log("📡 [PARTYKIT] Enviando ArrayBuffer/Uint8Array:", size, "bytes");
 			socket.send(data);
 			return;
 		}

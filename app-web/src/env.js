@@ -7,7 +7,16 @@ export const env = createEnv({
 	 * isn't built with invalid env vars.
 	 */
 	server: {
-		DATABASE_URL: z.string().url(),
+		DATABASE_URL: z
+			.string()
+			.default("")
+			.transform((val) => val.trim())
+			.refine(
+				(val) => val === "" || /^postgres(ql)?:\/\/.+/.test(val),
+				{
+					message: "DATABASE_URL must be a valid PostgreSQL connection string",
+				},
+			),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),

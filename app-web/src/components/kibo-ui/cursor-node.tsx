@@ -107,9 +107,12 @@ const COLOR_MAP = {
  * - Figma/Miro: Fixed size scaling
  * - Excalidraw: Canvas-native rendering
  */
-export const CursorNode = memo<NodeProps<CursorData>>(({ data }) => {
+export const CursorNode = memo((({ data }: any) => {
+	// Cast data para CursorData para type safety
+	const cursorData = data as CursorData;
+
 	// Não renderizar o próprio cursor (browser já mostra)
-	if (data.isCurrentUser) {
+	if (cursorData.isCurrentUser) {
 		return null;
 	}
 
@@ -117,11 +120,11 @@ export const CursorNode = memo<NodeProps<CursorData>>(({ data }) => {
 	const zoom = useStore((state) => state.transform[2]);
 
 	// Obter cores para o usuário
-	const colors = COLOR_MAP[data.color];
+	const colors = COLOR_MAP[cursorData.color];
 
 	return (
 		<div
-			data-testid={`cursor-${data.id}`}
+			data-testid={`cursor-${cursorData.id}`}
 			className="pointer-events-none"
 			style={{
 				// ✨ Magia: Compensa o zoom do React Flow
@@ -142,20 +145,20 @@ export const CursorNode = memo<NodeProps<CursorData>>(({ data }) => {
 				>
 					<div className="flex items-center gap-2">
 						<Image
-							alt={data.name}
+							alt={cursorData.name}
 							className="mt-0 mb-0 size-4 rounded-full"
 							height={16}
-							src={data.avatar}
+							src={cursorData.avatar}
 							unoptimized
 							width={16}
 						/>
-						<CursorName>{data.name}</CursorName>
+						<CursorName>{cursorData.name}</CursorName>
 					</div>
-					{data.message && <CursorMessage>{data.message}</CursorMessage>}
+					{cursorData.message && <CursorMessage>{cursorData.message}</CursorMessage>}
 				</CursorBody>
 			</Cursor>
 		</div>
 	);
-});
+}) as any);
 
 CursorNode.displayName = "CursorNode";

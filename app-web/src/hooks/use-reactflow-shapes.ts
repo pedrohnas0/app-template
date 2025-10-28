@@ -74,7 +74,7 @@ export function useReactFlowShapes(options: UseYjsShapesOptions) {
 	/**
 	 * Converte shapes Yjs em nodes do React Flow
 	 */
-	const nodes: Node<ShapeNodeData>[] = useMemo(() => {
+	const nodes: Node[] = useMemo(() => {
 		return shapes.map((shape) => ({
 			id: shape.id,
 			type: "shapeNode",
@@ -91,8 +91,8 @@ export function useReactFlowShapes(options: UseYjsShapesOptions) {
 	 *
 	 * Sincroniza mudanças de posição de volta para o Yjs
 	 */
-	const onNodesChange: OnNodesChange<Node<ShapeNodeData>> = useCallback(
-		(changes: NodeChange<Node<ShapeNodeData>>[]) => {
+	const onNodesChange: OnNodesChange = useCallback(
+		(changes: NodeChange[]) => {
 			// Processar mudanças de posição
 			changes.forEach((change) => {
 				if (change.type === "position" && change.dragging === false) {
