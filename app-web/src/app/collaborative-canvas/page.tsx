@@ -4,19 +4,21 @@ import {
 	Background,
 	BackgroundVariant,
 	type Edge,
-	type Node,
 	Panel,
 	ReactFlow,
 } from "@xyflow/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { AvatarStack } from "~/components/kibo-ui/avatar-stack";
 import { CanvasControls } from "~/components/kibo-ui/canvas-controls";
+import { CanvasToolbar, type ToolType } from "~/components/kibo-ui/canvas-toolbar";
 import {
 	CollaborativeCursors,
 	type CollaborativeUser,
 } from "~/components/kibo-ui/collaborative-cursors";
+import { ShapeNode } from "~/components/kibo-ui/shape-node";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { usePartyKit } from "~/hooks/use-partykit";
+import { useReactFlowShapes } from "~/hooks/use-reactflow-shapes";
 import "@xyflow/react/dist/style.css";
 
 /**
@@ -60,11 +62,17 @@ export default function CollaborativeCanvasPage() {
 	// Estado local
 	const [myPosition, setMyPosition] = useState({ x: 50, y: 50 });
 	const [otherUsers, setOtherUsers] = useState<CollaborativeUser[]>([]);
-	const [nodes] = useState<Node[]>([]);
+	const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
 	const [edges] = useState<Edge[]>([]);
 	const containerRef = useRef<HTMLElement>(null);
 	const rafRef = useRef<number | null>(null);
 	const lastSendTimeRef = useRef<number>(0);
+
+	// Hook para shapes colaborativas (React Flow + Yjs)
+	const { nodes, onNodesChange, addShape } = useReactFlowShapes(roomId);
+
+	// Node types para React Flow
+	const nodeTypes = useMemo(() => ({ shapeNode: ShapeNode }), []);
 
 	// Hook PartyKit
 	const { send, isConnected } = usePartyKit({
@@ -153,6 +161,70 @@ export default function CollaborativeCanvasPage() {
 		e.preventDefault();
 	}, []);
 
+	// Handler para clicar no canvas e criar shape
+	const handlePaneClick = useCallback(
+		(event: React.MouseEvent) => {
+			if (!selectedTool) return;
+
+			// Pegar posição do clique no canvas
+			const canvasElement = event.currentTarget as HTMLElement;
+			const bounds = canvasElement.getBoundingClientRect();
+			const x = event.clientX - bounds.left;
+			const y = event.clientY - bounds.top;
+
+			// Criar shape baseado na ferramenta selecionada
+			switch (selectedTool) {
+				case "rect":
+					addShape({
+						type: "rect",
+						x,
+						y,
+						width: 100,
+						height: 80,
+						fill: "#3b82f6", // blue-500
+					});
+					break;
+
+				case "circle":
+					addShape({
+						type: "circle",
+						x,
+						y,
+						radius: 50,
+						fill: "#10b981", // emerald-500
+					});
+					break;
+
+				case "text":
+					addShape({
+						type: "text",
+						x,
+						y,
+						text: "Texto",
+						fill: "#ef4444", // red-500
+						fontSize: 16,
+					});
+					break;
+
+				case "line":
+					addShape({
+						type: "line",
+						x,
+						y,
+						x2: x + 100,
+						y2: y,
+						stroke: "#8b5cf6", // violet-500
+						strokeWidth: 2,
+					});
+					break;
+			}
+
+			// Desselecionar ferramenta após criar shape
+			setSelectedTool(null);
+		},
+		[selectedTool, addShape],
+	);
+
 	// Setup pointer events
 	useEffect(() => {
 		const container = containerRef.current;
@@ -193,6 +265,9 @@ export default function CollaborativeCanvasPage() {
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
+				nodeTypes={nodeTypes}
+				onNodesChange={onNodesChange}
+				onPaneClick={handlePaneClick}
 				fitView
 				proOptions={{ hideAttribution: true }}
 				className="[&_.react-flow__background]:opacity-30"
@@ -209,10 +284,19 @@ export default function CollaborativeCanvasPage() {
 				>
 					<CanvasControls />
 				</Panel>
+				<Panel
+					position="top-left"
+					className="pointer-events-auto cursor-auto"
+				>
+					<CanvasToolbar
+						selectedTool={selectedTool ?? undefined}
+						onToolSelect={setSelectedTool}
+					/>
+				</Panel>
 			</ReactFlow>
 
 			{/* Header */}
-			<div className="pointer-events-auto absolute top-8 left-8 z-10 cursor-auto">
+			<div className="pointer-events-auto absolute top-8 left-56 z-10 cursor-auto">
 				<div className="rounded-lg border border-border bg-background/80 p-6 shadow-lg backdrop-blur-sm">
 					<h1 className="font-bold text-3xl tracking-tight">
 						Collaborative Canvas
